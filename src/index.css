@@ -1,0 +1,133 @@
+:root {
+  --primary: #0056ff;
+  --primary-dark: #003bb8;
+  --bg-light: #f5f6fa;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+  background: var(--bg-light);
+}
+
+/* HEADER */
+.top-strip {
+  background: #111827;
+  color: #e5e7eb;
+  font-size: 13px;
+}
+
+.main-header {
+  background: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.main-header .logo {
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--primary);
+  text-decoration: none;
+  letter-spacing: 0.5px;
+}
+
+.search-box {
+  border-radius: 999px;
+  overflow: hidden;
+  border: 1px solid #d1d5db;
+}
+
+.search-box input {
+  border: none;
+  outline: none;
+  padding-left: 14px;
+}
+
+.search-box button {
+  border-radius: 0;
+}
+
+.category-bar {
+  background: var(--primary);
+}
+
+.category-bar .nav-link {
+  color: #e5e7eb;
+  font-weight: 500;
+}
+
+.category-bar .nav-link.active,
+.category-bar .nav-link:hover {
+  color: #ffffff;
+}
+
+/* HOME PAGE */
+.home-hero {
+  margin-top: 16px;
+}
+
+.hero-banner {
+  background: linear-gradient(90deg, var(--primary), var(--primary-dark));
+  color: white;
+  border-radius: 12px;
+  padding: 24px;
+}
+
+.hero-banner h1 {
+  font-size: 30px;
+  font-weight: 800;
+}
+
+.hero-banner p {
+  margin-top: 6px;
+  margin-bottom: 16px;
+  opacity: 0.9;
+}
+
+.hero-banner .btn-light {
+  color: var(--primary-dark);
+  font-weight: 600;
+}
+
+/* category cards */
+.cat-card {
+  background: white;
+  border-radius: 10px;
+  padding: 12px;
+  text-align: center;
+  border: 1px solid #e5e7eb;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.cat-card:hover {
+  border-color: var(--primary);
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.12);
+  transform: translateY(-2px);
+}
+
+/* product card */
+.card {
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+}
+
+.card-img-top {
+  object-fit: cover;
+}
+
+/* filter bar */
+.filter-bar {
+  background: white;
+  border-radius: 10px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  border: 1px solid #e5e7eb;
+}
+
+/* footer */
+footer {
+  margin-top: 32px;
+}
