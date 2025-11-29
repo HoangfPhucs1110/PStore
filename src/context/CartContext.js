@@ -5,13 +5,11 @@ const CartContext = createContext(null);
 export function CartProvider({ children }) {
   const [cart, setCart] = useState([]);
 
-  // Load cart từ localStorage
   useEffect(() => {
     const saved = localStorage.getItem("pstore_cart");
     if (saved) setCart(JSON.parse(saved));
   }, []);
 
-  // Lưu cart
   useEffect(() => {
     localStorage.setItem("pstore_cart", JSON.stringify(cart));
   }, [cart]);
@@ -21,6 +19,7 @@ export function CartProvider({ children }) {
       const idx = prev.findIndex((x) => x._id === p._id);
       const base = {
         _id: p._id,
+        slug: p.slug,
         name: p.name,
         price: p.price,
         image: p.thumbnail || p.images?.[0],
@@ -57,7 +56,7 @@ export function CartProvider({ children }) {
       value={{
         cart,
         addItem,
-        addToCart: addItem, // alias cũ nếu nơi khác đang dùng
+        addToCart: addItem,
         updateQty,
         removeFromCart,
         clearCart,

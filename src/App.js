@@ -12,6 +12,7 @@ import Register from "./pages/Register";
 import Profile from "./pages/Profile";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminProducts from "./pages/AdminProducts";
+import AdminProductForm from "./pages/AdminProductForm";
 import AdminOrders from "./pages/AdminOrders";
 
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -63,6 +64,22 @@ function App() {
             element={
               <AdminRoute>
                 <AdminProducts />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/products/new"
+            element={
+              <AdminRoute>
+                <AdminProductForm />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/products/:id/edit"
+            element={
+              <AdminRoute>
+                <AdminProductForm />
               </AdminRoute>
             }
           />

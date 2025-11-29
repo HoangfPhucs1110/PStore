@@ -5,9 +5,10 @@ const addressSchema = new mongoose.Schema(
     label: String,
     fullName: String,
     phone: String,
-    address: String
+    address: String,
+    isDefault: { type: Boolean, default: false }
   },
-  { _id: false }
+  { _id: false } // giữ như file ban đầu
 );
 
 const userSchema = new mongoose.Schema(
@@ -18,6 +19,7 @@ const userSchema = new mongoose.Schema(
     role: { type: String, enum: ["user", "admin"], default: "user" },
     phone: String,
     gender: { type: String, enum: ["male", "female"], default: "male" },
+    avatarUrl: String,
     addresses: [addressSchema],
     isActive: { type: Boolean, default: true }
   },

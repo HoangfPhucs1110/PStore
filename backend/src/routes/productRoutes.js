@@ -98,8 +98,24 @@ router.get("/_meta/categories/all", async (req, res) => {
   }
 });
 
-router.post("/upload-image", upload.single("image"), (req, res) => {
-  res.json({ url: `/uploads/${req.file.filename}` });
-});
+// UPLOAD ẢNH
+router.post(
+  "/upload-image",
+  protect,
+  admin,
+  upload.single("image"),
+  (req, res) => {
+    if (!req.file) {
+      return res.status(400).json({ message: "Không nhận được file" });
+    }
+
+    const base =
+      process.env.BASE_URL || `${req.protocol}://${req.get("host")}`;
+
+    return res.json({
+      url: `${base}/uploads/${req.file.filename}`
+    });
+  }
+);
 
 module.exports = router;

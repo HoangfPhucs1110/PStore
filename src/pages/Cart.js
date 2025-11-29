@@ -2,7 +2,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useCart } from "../context/CartContext";
 
 export default function Cart() {
-  const { cart, updateQty, removeItem } = useCart();
+  const { cart, updateQty, removeFromCart } = useCart();
   const nav = useNavigate();
 
   const total = cart.reduce((s, x) => s + x.price * x.qty, 0);
@@ -24,53 +24,57 @@ export default function Cart() {
       <div className="row g-3">
         <div className="col-lg-8">
           <div className="bg-white rounded-3 shadow-sm p-3">
-            {cart.map((item) => (
-              <div
-                key={item._id}
-                className="d-flex align-items-center border-bottom py-2"
-              >
-                <img
-                  src={item.thumbnail || item.images?.[0]}
-                  alt={item.name}
-                  style={{ width: 72, height: 72, objectFit: "contain" }}
-                  className="me-3"
-                />
-                <div className="flex-grow-1">
-                  <Link
-                    to={`/products/${item._id}`}
-                    className="text-decoration-none text-dark"
-                  >
-                    <div className="fw-semibold">{item.name}</div>
-                  </Link>
-                  <div className="text-danger fw-semibold">
-                    {item.price.toLocaleString()} đ
-                  </div>
-                </div>
-                <div className="d-flex align-items-center me-3">
-                  <button
-                    className="btn btn-sm btn-outline-secondary"
-                    onClick={() =>
-                      updateQty(item._id, Math.max(1, item.qty - 1))
-                    }
-                  >
-                    -
-                  </button>
-                  <span className="px-2">{item.qty}</span>
-                  <button
-                    className="btn btn-sm btn-outline-secondary"
-                    onClick={() => updateQty(item._id, item.qty + 1)}
-                  >
-                    +
-                  </button>
-                </div>
-                <button
-                  className="btn btn-sm btn-link text-danger"
-                  onClick={() => removeItem(item._id)}
+            {cart.map((item) => {
+              const img = item.image || "/images/placeholder.png";
+
+              return (
+                <div
+                  key={item._id}
+                  className="d-flex align-items-center border-bottom py-2"
                 >
-                  Xóa
-                </button>
-              </div>
-            ))}
+                  <img
+                    src={img}
+                    alt={item.name}
+                    style={{ width: 72, height: 72, objectFit: "cover" }}
+                    className="me-3 rounded border"
+                  />
+                  <div className="flex-grow-1">
+                    <Link
+                      to={`/products/${item.slug}`}
+                      className="text-decoration-none text-dark"
+                    >
+                      <div className="fw-semibold">{item.name}</div>
+                    </Link>
+                    <div className="text-danger fw-semibold">
+                      {item.price.toLocaleString()} đ
+                    </div>
+                  </div>
+                  <div className="d-flex align-items-center me-3">
+                    <button
+                      className="btn btn-sm btn-outline-secondary"
+                      onClick={() =>
+                        updateQty(item._id, Math.max(1, item.qty - 1))
+                      }
+                    >
+                      -
+                    </button>
+                    <span className="px-2">{item.qty}</span>
+                    <button
+                      className="btn btn-sm btn-outline-secondary"
+                      onClick={() => updateQty(item._id, item.qty + 1)}
+                    >
+                      +
+                    </button>
+                  </div>
+                  <button
+                    className="btn btn-sm btn-link text-danger"
+                    onClick={() => removeFromCart(item._id)}
+                  >
+                    Xóa
+                  </button>
+                </div>
+              );
+            })}
           </div>
         </div>
 
