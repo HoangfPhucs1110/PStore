@@ -2,7 +2,6 @@ const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
 const connectDB = require("./config/db");
-const profileRoutes = require("./routes/profile");
 
 dotenv.config();
 connectDB();
@@ -13,7 +12,10 @@ app.use(express.json());
 
 app.get("/", (req, res) => res.send("PStore API v2"));
 
+// Auth + profile
 app.use("/api/auth", require("./routes/authRoutes"));
+
+// Sản phẩm, giỏ hàng, đơn hàng, v.v.
 app.use("/api/products", require("./routes/productRoutes"));
 app.use("/api/orders", require("./routes/orderRoutes"));
 app.use("/api/carts", require("./routes/cartRoutes"));
@@ -22,10 +24,8 @@ app.use("/api/wishlists", require("./routes/wishlistRoutes"));
 app.use("/api/banners", require("./routes/bannerRoutes"));
 app.use("/api/coupons", require("./routes/couponRoutes"));
 app.use("/api/admin/users", require("./routes/adminUserRoutes"));
-app.use("/uploads", express.static("uploads"));
-app.use("/api/auth", profileRoutes);
-app.use("/api/auth", require("./routes/profile"));
 
+app.use("/uploads", express.static("uploads"));
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log("Server running on", PORT));

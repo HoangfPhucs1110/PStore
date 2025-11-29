@@ -14,22 +14,26 @@ import AdminDashboard from "./pages/AdminDashboard";
 import AdminProducts from "./pages/AdminProducts";
 import AdminProductForm from "./pages/AdminProductForm";
 import AdminOrders from "./pages/AdminOrders";
+import About from "./pages/About";
+import Policy from "./pages/Policy";
+import Guide from "./pages/Guide";
+import Contact from "./pages/Contact";
 
-import ProtectedRoute from "./components/ProtectedRoute";
-import AdminRoute from "./components/AdminRoute";
 import { AuthProvider } from "./context/AuthContext";
 import { CartProvider } from "./context/CartContext";
+import ProtectedRoute from "./components/ProtectedRoute";
+import AdminRoute from "./components/AdminRoute";
+import AdminUsers from "./pages/AdminUsers";
+import OrderSuccess from "./pages/OrderSuccess";
 
 function App() {
   return (
     <AuthProvider>
       <CartProvider>
         <Header />
-
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/products" element={<ProductList />} />
-          {/* chi tiết theo slug */}
           <Route path="/products/:slug" element={<ProductDetail />} />
           <Route path="/cart" element={<Cart />} />
 
@@ -41,6 +45,7 @@ function App() {
               </ProtectedRoute>
             }
           />
+
           <Route
             path="/profile"
             element={
@@ -50,7 +55,6 @@ function App() {
             }
           />
 
-          {/* ADMIN */}
           <Route
             path="/admin"
             element={
@@ -76,7 +80,7 @@ function App() {
             }
           />
           <Route
-            path="/admin/products/:id"
+            path="/admin/products/:id/edit"
             element={
               <AdminRoute>
                 <AdminProductForm />
@@ -91,11 +95,16 @@ function App() {
               </AdminRoute>
             }
           />
+          <Route path="/admin/users" element={<AdminUsers />} />
 
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/about" element={<About />} />
+          <Route path="/policy" element={<Policy />} />
+<Route path="/guide" element={<Guide />} />
+<Route path="/contact" element={<Contact />} />
+<Route path="/order-success" element={<OrderSuccess />} />
         </Routes>
-
         <Footer />
       </CartProvider>
     </AuthProvider>

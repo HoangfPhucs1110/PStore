@@ -1,7 +1,7 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 
-// Middleware bảo vệ route, yêu cầu JWT
+// Bảo vệ route – yêu cầu đăng nhập
 const protect = async (req, res, next) => {
   let token = null;
 
@@ -15,20 +15,21 @@ const protect = async (req, res, next) => {
   if (!token) {
     return res
       .status(401)
-      .json({ message: "Không có token, vui lòng đăng nhập lại." });
+      .json({ message: "Bạn chưa đăng nhập hoặc token không tồn tại." });
   }
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await User.findById(decoded.id).select("_id role");
+    const user = await User.findById(decoded.id);
     if (!user) {
-      return res.status(401).json({ message: "Tài khoản không tồn tại." });
+      return res
+        .status(401)
+        .json({ message: "Tài khoản không tồn tại hoặc đã bị khóa." });
     }
-
     req.user = user;
     next();
   } catch (err) {
-    console.error("protect middleware error", err);
+    console.error("auth protect error:", err);
     return res
       .status(401)
       .json({ message: "Token không hợp lệ hoặc đã hết hạn." });

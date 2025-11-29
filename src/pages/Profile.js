@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import api from "../api";
 import ConfirmDialog from "../components/ConfirmDialog";
+import { useLocation } from "react-router-dom";
 
 const apiBase =
   api.defaults.baseURL?.replace(/\/api\/?$/, "") || window.location.origin;
@@ -28,7 +29,11 @@ const normalizeAvatar = (url) => {
 
 export default function Profile() {
   const { user } = useAuth();
-  const [tab, setTab] = useState("info");
+  const location = useLocation();
+const searchParams = new URLSearchParams(location.search);
+const initialTab = searchParams.get("tab") || "info";
+const [tab, setTab] = useState(initialTab);
+
   const [profile, setProfile] = useState({
     name: user?.name || "",
     phone: user?.phone || "",
@@ -315,6 +320,10 @@ export default function Profile() {
                       .join("; ")
                   : ""}
               </div>
+
+              <div className="small text-muted mb-1">
+  Ghi chú: {o.note?.trim() ? o.note : "Không có"}
+</div>
             </div>
             <div className="text-md-end">
               <div className="fw-semibold mb-1 text-danger">

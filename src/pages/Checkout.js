@@ -6,7 +6,7 @@ import api from "../api";
 import ConfirmDialog from "../components/ConfirmDialog";
 
 export default function Checkout() {
-  const { cart, itemsPrice, shippingPrice, totalPrice, clearCart } = useCart();
+  const { cart, itemsPrice, clearCart } = useCart();
   const { user } = useAuth();
   const nav = useNavigate();
 
@@ -44,6 +44,11 @@ export default function Checkout() {
       cancelText: "Đóng",
       onConfirm: null
     });
+
+  // tính ship: đơn >= 1tr free ship, còn lại 30k
+  const BASE_SHIP = 30000;
+  const shippingFee = itemsPrice >= 1000000 ? 0 : BASE_SHIP;
+  const grandTotal = itemsPrice + shippingFee;
 
   useEffect(() => {
     if (!user) return;
@@ -91,7 +96,6 @@ export default function Checkout() {
     }
 
     let shippingAddress;
-
     if (mode === "select") {
       if (!addresses.length) {
         showDialog("Vui lòng thêm ít nhất một địa chỉ giao hàng.");
@@ -124,21 +128,27 @@ export default function Checkout() {
           priceSnapshot: x.price,
           qty: x.qty
         })),
+        // cho backend cũ + mới đều hiểu
+        itemsPrice,
+        shippingPrice: shippingFee,
+        totalPrice: grandTotal,
+        subtotal: itemsPrice,
+        shippingFee,
+        discount: 0,
+        total: grandTotal,
+        shippingInfo: {
+          fullName: shippingAddress.fullName || contact.name,
+          phone: shippingAddress.phone || contact.phone,
+          address: shippingAddress.address
+        },
         address: shippingAddress,
         contact,
         note
       };
 
-      await api.post("/orders", payload);
+      const res = await api.post("/orders", payload);
       clearCart();
-      setDialog({
-        open: true,
-        title: "Thanh toán thành công",
-        message: "Đặt hàng thành công. Cảm ơn bạn đã mua sắm tại PStore.",
-        confirmText: "Về trang chủ",
-        cancelText: "Ở lại trang",
-        onConfirm: () => nav("/")
-      });
+      nav("/order-success", { state: { order: res.data } });
     } catch (e) {
       console.error("POST /orders", e);
       showDialog(
@@ -366,8 +376,8 @@ export default function Checkout() {
             <div className="d-flex justify-content-between mb-1">
               <span>Phí vận chuyển</span>
               <span>
-                {shippingPrice
-                  ? shippingPrice.toLocaleString() + " đ"
+                {shippingFee
+                  ? shippingFee.toLocaleString("vi-VN") + " đ"
                   : "Miễn phí"}
               </span>
             </div>
@@ -375,7 +385,7 @@ export default function Checkout() {
             <div className="d-flex justify-content-between mb-3 fw-semibold">
               <span>Tổng cộng</span>
               <span className="text-danger">
-                {totalPrice.toLocaleString()} đ
+                {grandTotal.toLocaleString("vi-VN")} đ
               </span>
             </div>
 

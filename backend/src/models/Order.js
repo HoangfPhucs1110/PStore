@@ -4,6 +4,7 @@ const orderItemSchema = new mongoose.Schema(
   {
     productId: { type: mongoose.Schema.Types.ObjectId, ref: "Product" },
     nameSnapshot: String,
+    imageSnapshot: String,
     priceSnapshot: Number,
     qty: Number
   },
@@ -24,10 +25,14 @@ const orderSchema = new mongoose.Schema(
   {
     userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     items: [orderItemSchema],
-    subtotal: Number,
-    shippingFee: Number,
-    discount: Number,
+
+    // tiền hàng + phí ship + giảm giá + tổng
+    itemsPrice: Number,
+    shippingPrice: Number,
+    discount: { type: Number, default: 0 },
     total: Number,
+    code: String,
+
     status: {
       type: String,
       enum: ["pending", "shipping", "completed", "canceled"],

@@ -83,6 +83,19 @@ export default function ProductDetail() {
     });
   }
   const specs = product.specs || {};
+  const stock = typeof product.stock === "number" ? product.stock : 0;
+  const outOfStock = stock <= 0;
+
+  const handleAdd = () => {
+    if (outOfStock) return;
+    addToCart(product, 1);
+  };
+
+  const handleBuyNow = () => {
+    if (outOfStock) return;
+    addToCart(product, 1);
+    window.location.href = "/checkout";
+  };
 
   return (
     <div className="container my-3">
@@ -159,25 +172,24 @@ export default function ProductDetail() {
             </div>
             <div className="mb-3">
               Tình trạng:{" "}
-              <span className="text-success fw-semibold">
-                {product.stock > 0 ? "Còn hàng" : "Hết hàng"}
+              <span className={outOfStock ? "text-danger fw-semibold" : "text-success fw-semibold"}>
+                {outOfStock ? "Hết hàng" : "Còn hàng"}
               </span>
             </div>
             <div className="d-flex gap-2">
               <button
                 className="btn btn-primary"
-                onClick={() => addToCart(product, 1)}
+                onClick={handleAdd}
+                disabled={outOfStock}
               >
-                Thêm vào giỏ
+                {outOfStock ? "Hết hàng" : "Thêm vào giỏ"}
               </button>
               <button
                 className="btn btn-outline-primary"
-                onClick={() => {
-                  addToCart(product, 1);
-                  window.location.href = "/checkout";
-                }}
+                onClick={handleBuyNow}
+                disabled={outOfStock}
               >
-                Mua ngay
+                {outOfStock ? "Hết hàng" : "Mua ngay"}
               </button>
             </div>
           </div>

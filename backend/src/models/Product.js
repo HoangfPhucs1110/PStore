@@ -25,11 +25,15 @@ const productSchema = new mongoose.Schema(
     oldPrice: Number,
     stock: { type: Number, default: 0 },
     sku: String,
+    // THÊM 2 TRƯỜNG MÔ TẢ
+    shortDescription: String,
+    description: String,
     status: {
       type: String,
       enum: ["active", "hidden", "out-of-stock"],
       default: "active"
     },
+    // THÔNG SỐ KỸ THUẬT
     specs: { type: mongoose.Schema.Types.Mixed },
     tags: [String],
     isFeatured: { type: Boolean, default: false },
