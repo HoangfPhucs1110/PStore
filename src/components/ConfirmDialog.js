@@ -1,6 +1,7 @@
 import React from "react";
 
 export default function ConfirmDialog({
+  open,
   show,
   title = "Xác nhận",
   message,
@@ -9,54 +10,41 @@ export default function ConfirmDialog({
   onCancel,
   onConfirm
 }) {
-  if (!show) return null;
+  const visible = typeof open === "boolean" ? open : show;
+  if (!visible) return null;
 
   return (
     <div
       style={{
         position: "fixed",
         inset: 0,
-        background: "rgba(0,0,0,0.45)",
+        backgroundColor: "rgba(0,0,0,0.4)",
+        zIndex: 1050,
         display: "flex",
         alignItems: "center",
-        justifyContent: "center",
-        zIndex: 3000
+        justifyContent: "center"
       }}
     >
       <div
-        style={{
-          width: 380,
-          background: "#fff",
-          borderRadius: 10,
-          padding: "20px 24px",
-          textAlign: "center",
-          boxShadow: "0 10px 30px rgba(0,0,0,0.15)"
-        }}
+        className="bg-white rounded-3 shadow p-3"
+        style={{ minWidth: 280, maxWidth: 420 }}
       >
-        <div
-          style={{
-            width: 60,
-            height: 60,
-            borderRadius: "50%",
-            border: "3px solid #ff9800",
-            color: "#ff9800",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            margin: "0 auto 12px",
-            fontSize: 28
-          }}
-        >
-          ?
-        </div>
-        <h5 className="mb-2">{title}</h5>
+        <h6 className="mb-2">{title}</h6>
         <p className="mb-4">{message}</p>
 
         <div className="d-flex gap-2">
-          <button className="btn btn-light flex-fill" onClick={onCancel}>
+          <button
+            type="button"
+            className="btn btn-light flex-fill"
+            onClick={onCancel}
+          >
             {cancelText}
           </button>
-          <button className="btn btn-danger flex-fill" onClick={onConfirm}>
+          <button
+            type="button"
+            className="btn btn-danger flex-fill"
+            onClick={onConfirm}
+          >
             {confirmText}
           </button>
         </div>

@@ -6,7 +6,7 @@ export default function ProductCard({ p }) {
   return (
     <div className="card h-100 product-card shadow-sm border-0">
       <Link
-        to={`/products/${p._id}`}
+        to={`/products/${p.slug}`}
         className="text-decoration-none text-dark"
       >
         <div className="ratio ratio-4x3 bg-light rounded-top">
@@ -14,35 +14,41 @@ export default function ProductCard({ p }) {
             <img
               src={img}
               alt={p.name}
-              className="w-100 h-100"
+              className="card-img-top rounded-top"
               style={{ objectFit: "cover" }}
             />
           )}
         </div>
-        <div className="card-body p-2">
-          <p className="small text-muted mb-1 text-uppercase">
-            {p.brand} · {p.categorySlug}
-          </p>
-          <h6 className="card-title mb-1 product-name-2line">{p.name}</h6>
+      </Link>
+
+      <div className="card-body d-flex flex-column">
+        <Link
+          to={`/products/${p.slug}`}
+          className="text-decoration-none text-dark"
+        >
+          <h6 className="card-title mb-1 text-truncate">{p.name}</h6>
+        </Link>
+        <div className="mb-2 small text-muted text-truncate">
+          {p.brand || "Thương hiệu khác"}
+        </div>
+
+        <div className="mt-auto">
           <div className="d-flex align-items-baseline gap-2">
             <span className="fw-bold text-primary">
-              {p.price.toLocaleString()} đ
+              {p.price.toLocaleString()}đ
             </span>
-            {p.oldPrice && (
-              <span className="small text-muted text-decoration-line-through">
-                {p.oldPrice.toLocaleString()} đ
+            {p.oldPrice && p.oldPrice > p.price && (
+              <span className="text-muted text-decoration-line-through small">
+                {p.oldPrice.toLocaleString()}đ
               </span>
             )}
           </div>
+          {p.oldPrice && p.oldPrice > p.price && (
+            <span className="badge bg-danger-subtle text-danger mt-1">
+              -{Math.round(((p.oldPrice - p.price) / p.oldPrice) * 100)}%
+            </span>
+          )}
         </div>
-      </Link>
-      <div className="card-footer bg-white border-0 pt-0 pb-2 px-2">
-        <Link
-          to={`/products/${p._id}`}
-          className="btn btn-primary w-100 btn-sm"
-        >
-          Xem chi tiết
-        </Link>
       </div>
     </div>
   );

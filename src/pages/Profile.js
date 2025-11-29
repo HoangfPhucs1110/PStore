@@ -1,7 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import api from "../api";
 import ConfirmDialog from "../components/ConfirmDialog";
+
+const apiBase =
+  api.defaults.baseURL?.replace(/\/api\/?$/, "") || window.location.origin;
 
 const makeEmptyAddress = (name = "", phone = "") => ({
   index: -1,
@@ -11,6 +14,17 @@ const makeEmptyAddress = (name = "", phone = "") => ({
   address: "",
   isDefault: false
 });
+
+const formatMoney = (n) => {
+  const num = typeof n === "number" ? n : Number(n || 0);
+  return num.toLocaleString();
+};
+
+const normalizeAvatar = (url) => {
+  if (!url) return "";
+  if (url.startsWith("http")) return url;
+  return apiBase + url;
+};
 
 export default function Profile() {
   const { user } = useAuth();
@@ -27,14 +41,38 @@ export default function Profile() {
   const [orders, setOrders] = useState([]);
   const [orderFilter, setOrderFilter] = useState("all");
   const [saving, setSaving] = useState(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+
   const [dialog, setDialog] = useState({
     open: false,
     title: "",
-    message: ""
+    message: "",
+    confirmText: "Đồng ý",
+    cancelText: "Hủy",
+    onConfirm: null
   });
 
-  const showDialog = (message, title = "Thông báo") =>
-    setDialog({ open: true, title, message });
+  const fileInputRef = useRef(null);
+
+  const showAlert = (message, title = "Thông báo") =>
+    setDialog({
+      open: true,
+      title,
+      message,
+      confirmText: "Đóng",
+      cancelText: "Đóng",
+      onConfirm: null
+    });
+
+  const showConfirm = (message, onConfirm, title = "Xác nhận") =>
+    setDialog({
+      open: true,
+      title,
+      message,
+      confirmText: "Xóa",
+      cancelText: "Hủy",
+      onConfirm
+    });
 
   useEffect(() => {
     if (!user) return;
@@ -47,7 +85,7 @@ export default function Profile() {
           phone: d.phone || "",
           avatarUrl: d.avatarUrl || ""
         });
-        setAddresses(d.addresses || []);
+        setAddresses(Array.isArray(d.addresses) ? d.addresses : []);
         setEditingAddress(makeEmptyAddress(d.name || user.name, d.phone || ""));
       })
       .catch((err) => console.error("GET /auth/profile", err));
@@ -57,7 +95,7 @@ export default function Profile() {
     if (tab === "orders") {
       api
         .get("/orders/my")
-        .then((res) => setOrders(res.data))
+        .then((res) => setOrders(res.data || []))
         .catch((err) => console.error("GET /orders/my", err));
     }
   }, [tab]);
@@ -69,7 +107,7 @@ export default function Profile() {
 
   const saveProfile = async () => {
     if (!profile.name.trim() || !profile.phone.trim()) {
-      showDialog("Vui lòng nhập đầy đủ họ tên và số điện thoại.");
+      showAlert("Vui lòng nhập đầy đủ họ tên và số điện thoại.");
       return;
     }
     setSaving(true);
@@ -81,17 +119,19 @@ export default function Profile() {
         addresses
       };
       const res = await api.put("/auth/profile", payload);
-      const d = res.data;
+      const d = res.data || {};
       setProfile({
-        name: d.name,
-        phone: d.phone || "",
-        avatarUrl: d.avatarUrl || ""
+        name: d.name || profile.name,
+        phone: d.phone || profile.phone,
+        avatarUrl: d.avatarUrl || profile.avatarUrl
       });
-      setAddresses(d.addresses || []);
-      showDialog("Cập nhật thông tin thành công.");
+      if (Array.isArray(d.addresses)) {
+        setAddresses(d.addresses);
+      }
+      showAlert("Cập nhật thông tin thành công.");
     } catch (e) {
       console.error("PUT /auth/profile", e);
-      showDialog(
+      showAlert(
         e.response?.data?.message || "Lưu thất bại, vui lòng thử lại sau."
       );
     } finally {
@@ -99,7 +139,37 @@ export default function Profile() {
     }
   };
 
-  // ===== địa chỉ =====
+  const handleAvatarClick = () => {
+    if (fileInputRef.current) fileInputRef.current.click();
+  };
+
+  const handleAvatarChange = async (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+
+    setAvatarUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("avatar", file);
+      const res = await api.post("/auth/profile/avatar", fd, {
+        headers: { "Content-Type": "multipart/form-data" }
+      });
+      const url = res.data?.avatarUrl || "";
+      if (url) {
+        setProfile((prev) => ({ ...prev, avatarUrl: url }));
+        showAlert("Cập nhật ảnh đại diện thành công.");
+      }
+    } catch (err) {
+      console.error("POST /auth/profile/avatar", err);
+      showAlert(
+        err.response?.data?.message ||
+          "Tải ảnh thất bại, vui lòng thử lại sau."
+      );
+    } finally {
+      setAvatarUploading(false);
+      if (e.target) e.target.value = "";
+    }
+  };
 
   const handleAddressChange = (field, value) => {
     setEditingAddress((prev) => ({ ...prev, [field]: value }));
@@ -111,7 +181,7 @@ export default function Profile() {
       !editingAddress.phone.trim() ||
       !editingAddress.address.trim()
     ) {
-      showDialog("Vui lòng nhập đầy đủ tên, số điện thoại và địa chỉ.");
+      showAlert("Vui lòng nhập đầy đủ tên, số điện thoại và địa chỉ.");
       return;
     }
 
@@ -130,17 +200,18 @@ export default function Profile() {
           address: editingAddress.address,
           isDefault: editingAddress.isDefault
         };
-        return list;
+      } else {
+        const newAddr = {
+          label: editingAddress.label,
+          fullName: editingAddress.fullName,
+          phone: editingAddress.phone,
+          address: editingAddress.address,
+          isDefault: editingAddress.isDefault
+        };
+        list = [...list, newAddr];
       }
 
-      const newAddr = {
-        label: editingAddress.label,
-        fullName: editingAddress.fullName,
-        phone: editingAddress.phone,
-        address: editingAddress.address,
-        isDefault: editingAddress.isDefault
-      };
-      return [...list, newAddr];
+      return list;
     });
 
     setEditingAddress(
@@ -148,23 +219,35 @@ export default function Profile() {
     );
   };
 
-  const startEditAddress = (addr, index) =>
-    setEditingAddress({ index, ...addr });
-
-  const setDefaultAddress = (index) => {
-    setAddresses((prev) =>
-      prev.map((a, i) => ({
-        ...a,
-        isDefault: i === index
-      }))
-    );
+  const startEditAddress = (index) => {
+    const a = addresses[index];
+    if (!a) return;
+    setEditingAddress({
+      index,
+      label: a.label || "Nhà riêng",
+      fullName: a.fullName || profile.name || user?.name || "",
+      phone: a.phone || profile.phone || "",
+      address: a.address || "",
+      isDefault: !!a.isDefault
+    });
   };
 
   const deleteAddress = (index) => {
-    setAddresses((prev) => prev.filter((_, i) => i !== index));
+    showConfirm("Bạn có chắc muốn xóa địa chỉ này?", () => {
+      setAddresses((prev) => prev.filter((_, i) => i !== index));
+    });
   };
 
-  if (!user) return <div className="container mt-3">Vui lòng đăng nhập.</div>;
+  const setDefaultAddress = (index) => {
+    setAddresses((prev) =>
+      prev.map((a, i) => ({ ...a, isDefault: i === index }))
+    );
+  };
+
+  if (!user)
+    return <div className="container mt-3">Vui lòng đăng nhập.</div>;
+
+  const avatarSidebarSrc = normalizeAvatar(profile.avatarUrl);
 
   const renderOrders = () => (
     <>
@@ -183,52 +266,76 @@ export default function Profile() {
               {st === "all"
                 ? "Tất cả"
                 : st === "pending"
-                ? "Mới"
+                ? "Chờ xác nhận"
                 : st === "shipping"
-                ? "Đang vận chuyển"
+                ? "Đang giao"
                 : st === "completed"
                 ? "Hoàn thành"
-                : "Hủy"}
+                : "Đã hủy"}
             </button>
           ))}
         </div>
       </div>
 
       {filteredOrders.length === 0 && (
-        <p className="text-muted small mb-0">
-          Chưa có đơn hàng nào với trạng thái này.
-        </p>
+        <div className="text-muted small">Bạn chưa có đơn hàng nào.</div>
       )}
 
-      <div className="vstack gap-2">
+      <div className="vstack gap-3">
         {filteredOrders.map((o) => (
           <div
             key={o._id}
-            className="border rounded-3 p-3 d-flex justify-content-between align-items-center bg-white"
+            className="border rounded-3 p-3 bg-white d-flex flex-column flex-md-row justify-content-between gap-2"
           >
             <div>
-              <div className="fw-semibold">
-                Mã đơn: <span className="text-primary">{o._id}</span>
+              <div className="fw-semibold mb-1">
+                Đơn #{(o._id || "").slice(-6).toUpperCase()}
               </div>
-              <div className="small text-muted">
-                {new Date(o.createdAt).toLocaleString()}
+              <div className="small text-muted mb-1">
+                Ngày đặt:{" "}
+                {o.createdAt ? new Date(o.createdAt).toLocaleString() : ""}
+              </div>
+              <div className="small mb-1">
+                Người nhận: {o.shippingInfo?.fullName} –{" "}
+                {o.shippingInfo?.phone}
+              </div>
+              <div className="small text-muted mb-1">
+                Địa chỉ: {o.shippingInfo?.address}
               </div>
               <div className="small">
-                {o.items.map((i) => i.nameSnapshot).join(", ")}
+                Sản phẩm:{" "}
+                {Array.isArray(o.items)
+                  ? o.items
+                      .map(
+                        (it) =>
+                          `${it.nameSnapshot} x ${it.qty} (${formatMoney(
+                            it.priceSnapshot
+                          )}đ)`
+                      )
+                      .join("; ")
+                  : ""}
               </div>
             </div>
-            <div className="text-end">
-              <div className="fw-semibold text-danger">
-                {o.total.toLocaleString()} đ
+            <div className="text-md-end">
+              <div className="fw-semibold mb-1 text-danger">
+                {formatMoney(o.total)} đ
               </div>
-              <div className="small">
+              <div className="small mb-1">
+                Thanh toán: {o.paymentMethod || "COD"} –{" "}
+                {o.paymentStatus === "paid"
+                  ? "Đã thanh toán"
+                  : o.paymentStatus === "refunded"
+                  ? "Đã hoàn tiền"
+                  : "Chưa thanh toán"}
+              </div>
+              <div>
                 {o.status === "pending" && (
-                  <span className="badge bg-warning text-dark">Mới</span>
+                  <span className="badge bg-warning text-dark">
+                    Chờ xác nhận
+                  </span>
                 )}
                 {o.status === "shipping" && (
-                  <span className="badge bg-info text-dark">
-                    Đang vận chuyển
-                  </span>
+                  <span className="badge bg-info text-dark">Đang vận chuyển</span>
                 )}
                 {o.status === "completed" && (
                   <span className="badge bg-success">Hoàn thành</span>
@@ -243,6 +350,8 @@ export default function Profile() {
       </div>
     </>
   );
+
+  const avatarMainSrc = normalizeAvatar(profile.avatarUrl);
 
   const renderInfo = () => (
     <>
@@ -273,98 +382,161 @@ export default function Profile() {
               }
             />
           </div>
-          <div className="mb-3">
-            <label className="form-label">Ảnh đại diện (URL)</label>
-            <input
-              className="form-control"
-              value={profile.avatarUrl}
-              onChange={(e) =>
-                setProfile({ ...profile, avatarUrl: e.target.value })
-              }
-            />
-          </div>
-
-          <hr className="my-3" />
-
-          <h6 className="mb-1">Địa chỉ giao hàng</h6>
-          <p className="small text-muted">
-            Thêm sẵn địa chỉ để chọn nhanh ở bước thanh toán.
-          </p>
-
-          <div className="row g-2 mb-2">
-            <div className="col-md-4">
-              <label className="form-label small mb-1">Nhãn địa chỉ</label>
-              <input
-                className="form-control form-control-sm"
-                value={editingAddress.label}
-                onChange={(e) =>
-                  handleAddressChange("label", e.target.value)
-                }
-              />
-            </div>
-            <div className="col-md-4">
-              <label className="form-label small mb-1">Tên người nhận</label>
-              <input
-                className="form-control form-control-sm"
-                value={editingAddress.fullName}
-                onChange={(e) =>
-                  handleAddressChange("fullName", e.target.value)
-                }
-              />
-            </div>
-            <div className="col-md-4">
-              <label className="form-label small mb-1">
-                Số điện thoại nhận hàng
-              </label>
-              <input
-                className="form-control form-control-sm"
-                value={editingAddress.phone}
-                onChange={(e) =>
-                  handleAddressChange("phone", e.target.value)
-                }
-              />
-            </div>
-            <div className="col-12">
-              <label className="form-label small mb-1">
-                Địa chỉ chi tiết
-              </label>
-              <input
-                className="form-control form-control-sm"
-                placeholder="Số nhà, đường, phường/xã, quận/huyện, tỉnh/thành phố"
-                value={editingAddress.address}
-                onChange={(e) =>
-                  handleAddressChange("address", e.target.value)
-                }
-              />
-            </div>
-            <div className="col-12 d-flex align-items-center mt-1">
-              <input
-                type="checkbox"
-                className="form-check-input me-2"
-                checked={editingAddress.isDefault}
-                id="addr-default"
-                onChange={(e) =>
-                  handleAddressChange("isDefault", e.target.checked)
-                }
-              />
-              <label
-                htmlFor="addr-default"
-                className="form-check-label small"
-              >
-                Đặt làm địa chỉ mặc định
-              </label>
-            </div>
-          </div>
 
           <button
+            className="btn btn-primary"
             type="button"
-            className="btn btn-outline-primary btn-sm"
-            onClick={saveAddressLocal}
+            disabled={saving}
+            onClick={saveProfile}
           >
-            {editingAddress.index >= 0 ? "Cập nhật địa chỉ" : "Thêm địa chỉ"}
+            {saving ? "Đang lưu..." : "Lưu thay đổi"}
           </button>
+        </div>
 
-          <div className="vstack gap-2 mt-3">
+        <div className="col-md-4 d-flex flex-column align-items-center">
+          <div
+            className="rounded-circle mb-2 border position-relative"
+            style={{
+              width: 96,
+              height: 96,
+              background: "#e5f0ff",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              overflow: "hidden",
+              fontSize: 36,
+              fontWeight: 700,
+              color: "#0d6efd",
+              cursor: "pointer"
+            }}
+            onClick={handleAvatarClick}
+          >
+            {avatarMainSrc ? (
+              <img
+                src={avatarMainSrc}
+                alt=""
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover"
+                }}
+                onError={(e) => {
+                  e.currentTarget.src =
+                    "https://via.placeholder.com/96?text=Avatar";
+                }}
+              />
+            ) : (
+              (profile.name || user.name || "U").charAt(0).toUpperCase()
+            )}
+          </div>
+          <input
+            type="file"
+            accept="image/*"
+            ref={fileInputRef}
+            className="d-none"
+            onChange={handleAvatarChange}
+          />
+          <div className="fw-semibold">{profile.name || user.name}</div>
+          <div className="small text-muted mb-1">{user.email}</div>
+          <div className="small text-primary">
+            {avatarUploading ? "Đang tải ảnh..." : "Nhấn vào ảnh để đổi ảnh"}
+          </div>
+        </div>
+      </div>
+    </>
+  );
+
+  const renderAddresses = () => (
+    <>
+      <h5 className="mb-3">Địa chỉ giao hàng</h5>
+      <p className="small text-muted">
+        Thêm sẵn địa chỉ để chọn nhanh ở bước thanh toán.
+      </p>
+
+      <div className="row g-3">
+        <div className="col-md-7">
+          <div className="bg-light rounded-3 p-3">
+            <h6 className="mb-2">
+              {editingAddress.index >= 0 ? "Sửa địa chỉ" : "Thêm địa chỉ mới"}
+            </h6>
+
+            <div className="row g-2">
+              <div className="col-md-4">
+                <label className="form-label small mb-1">Nhãn địa chỉ</label>
+                <input
+                  className="form-control form-control-sm"
+                  value={editingAddress.label}
+                  onChange={(e) =>
+                    handleAddressChange("label", e.target.value)
+                  }
+                />
+              </div>
+              <div className="col-md-4">
+                <label className="form-label small mb-1">Tên người nhận</label>
+                <input
+                  className="form-control form-control-sm"
+                  value={editingAddress.fullName}
+                  onChange={(e) =>
+                    handleAddressChange("fullName", e.target.value)
+                  }
+                />
+              </div>
+              <div className="col-md-4">
+                <label className="form-label small mb-1">
+                  Số điện thoại nhận hàng
+                </label>
+                <input
+                  className="form-control form-control-sm"
+                  value={editingAddress.phone}
+                  onChange={(e) =>
+                    handleAddressChange("phone", e.target.value)
+                  }
+                />
+              </div>
+              <div className="col-12">
+                <label className="form-label small mb-1">
+                  Địa chỉ chi tiết
+                </label>
+                <input
+                  className="form-control form-control-sm"
+                  placeholder="Số nhà, đường, phường/xã, quận/huyện, tỉnh/thành phố"
+                  value={editingAddress.address}
+                  onChange={(e) =>
+                    handleAddressChange("address", e.target.value)
+                  }
+                />
+              </div>
+              <div className="col-12 d-flex align-items-center mt-1">
+                <input
+                  type="checkbox"
+                  className="form-check-input me-2"
+                  checked={editingAddress.isDefault}
+                  id="addr-default"
+                  onChange={(e) =>
+                    handleAddressChange("isDefault", e.target.checked)
+                  }
+                />
+                <label
+                  htmlFor="addr-default"
+                  className="form-check-label small"
+                >
+                  Đặt làm địa chỉ mặc định
+                </label>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              className="btn btn-outline-primary btn-sm mt-3"
+              onClick={saveAddressLocal}
+            >
+              {editingAddress.index >= 0 ? "Cập nhật địa chỉ" : "Thêm địa chỉ"}
+            </button>
+          </div>
+        </div>
+
+        <div className="col-md-5">
+          <div className="vstack gap-2">
             {addresses.map((addr, idx) => (
               <div
                 key={idx}
@@ -374,13 +546,11 @@ export default function Profile() {
                   <div className="fw-semibold small">
                     {addr.label ? `[${addr.label}] ` : ""}
                     {addr.fullName} – {addr.phone}
+                    {addr.isDefault && (
+                      <span className="badge bg-primary ms-2">Mặc định</span>
+                    )}
                   </div>
                   <div className="small text-muted">{addr.address}</div>
-                  {addr.isDefault && (
-                    <span className="badge bg-primary bg-opacity-75 mt-1">
-                      Mặc định
-                    </span>
-                  )}
                 </div>
                 <div className="d-flex flex-column gap-1">
                   {!addr.isDefault && (
@@ -395,7 +565,7 @@ export default function Profile() {
                   <button
                     type="button"
                     className="btn btn-link p-0 small"
-                    onClick={() => startEditAddress(addr, idx)}
+                    onClick={() => startEditAddress(idx)}
                   >
                     Sửa
                   </button>
@@ -423,53 +593,61 @@ export default function Profile() {
               disabled={saving}
               onClick={saveProfile}
             >
-              {saving ? "Đang lưu..." : "Lưu thay đổi"}
+              {saving ? "Đang lưu..." : "Lưu thay đổi địa chỉ"}
             </button>
           </div>
-        </div>
-
-        <div className="col-md-4 d-flex flex-column align-items-center">
-          <div
-            className="rounded-circle mb-2"
-            style={{
-              width: 96,
-              height: 96,
-              background: "#e5f0ff",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              overflow: "hidden",
-              fontSize: 36,
-              fontWeight: 700,
-              color: "#0d6efd"
-            }}
-          >
-            {profile.avatarUrl ? (
-              <img
-                src={profile.avatarUrl}
-                alt=""
-                style={{ width: "100%", height: "100%", objectFit: "cover" }}
-              />
-            ) : (
-              (profile.name || user.name || "U").charAt(0).toUpperCase()
-            )}
-          </div>
-          <div className="fw-semibold">{profile.name || user.name}</div>
-          <div className="small text-muted">{user.email}</div>
         </div>
       </div>
     </>
   );
 
   return (
-    <div className="container my-3 account-page">
+    <div className="container my-3">
       <div className="row g-3">
         <div className="col-md-3">
-          <div className="bg-white rounded-3 shadow-sm p-3">
-            <div className="mb-3">
-              <div className="fw-semibold">{profile.name || user.name}</div>
-              <div className="small text-muted">{user.email}</div>
+          <div className="bg-white rounded-3 shadow-sm p-3 h-100 d-flex flex-column">
+            <div className="d-flex align-items-center mb-3">
+              <div
+                className="rounded-circle me-2"
+                style={{
+                  width: 40,
+                  height: 40,
+                  background: "#e5f0ff",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  overflow: "hidden",
+                  fontSize: 18,
+                  fontWeight: 700,
+                  color: "#0d6efd"
+                }}
+              >
+                {avatarSidebarSrc ? (
+                  <img
+                    src={avatarSidebarSrc}
+                    alt=""
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover"
+                    }}
+                    onError={(e) => {
+                      e.currentTarget.src =
+                        "https://via.placeholder.com/40?text=U";
+                    }}
+                  />
+                ) : (
+                  (profile.name || user.name || "U").charAt(0).toUpperCase()
+                )}
+              </div>
+              <div>
+                <div className="fw-semibold small">
+                  {profile.name || user.name}
+                </div>
+                <div className="small text-muted">{user.email}</div>
+              </div>
             </div>
+
             <div className="vstack gap-2">
               <button
                 className={
@@ -478,6 +656,14 @@ export default function Profile() {
                 onClick={() => setTab("info")}
               >
                 Thông tin tài khoản
+              </button>
+              <button
+                className={
+                  "account-menu-btn " + (tab === "addresses" ? "active" : "")
+                }
+                onClick={() => setTab("addresses")}
+              >
+                Địa chỉ giao hàng
               </button>
               <button
                 className={
@@ -493,18 +679,25 @@ export default function Profile() {
         <div className="col-md-9">
           <div className="bg-white rounded-3 shadow-sm p-3">
             {tab === "info" && renderInfo()}
+            {tab === "addresses" && renderAddresses()}
             {tab === "orders" && renderOrders()}
           </div>
         </div>
       </div>
 
       <ConfirmDialog
-        open={dialog.open}
+        show={dialog.open}
         title={dialog.title}
         message={dialog.message}
-        confirmText="Đóng"
-        onConfirm={() => setDialog({ ...dialog, open: false })}
-        onCancel={() => setDialog({ ...dialog, open: false })}
+        confirmText={dialog.confirmText}
+        cancelText={dialog.cancelText}
+        onConfirm={() => {
+          if (dialog.onConfirm) dialog.onConfirm();
+          setDialog((d) => ({ ...d, open: false, onConfirm: null }));
+        }}
+        onCancel={() =>
+          setDialog((d) => ({ ...d, open: false, onConfirm: null }))
+        }
       />
     </div>
   );

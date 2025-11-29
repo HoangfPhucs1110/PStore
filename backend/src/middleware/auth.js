@@ -1,39 +1,45 @@
-// backend/routes/auth.js
-const router = require("express").Router();
+const jwt = require("jsonwebtoken");
 const User = require("../models/User");
-const { protect } = require("../middleware/auth");
 
-// ... các route đăng ký / đăng nhập cũ của bạn ở trên ...
+// Middleware bảo vệ route, yêu cầu JWT
+const protect = async (req, res, next) => {
+  let token = null;
 
-// Lấy thông tin profile + địa chỉ
-router.get("/profile", protect, async (req, res) => {
-  try {
-    const user = await User.findById(req.user._id).select("-password");
-    if (!user) return res.status(404).json({ message: "Không tìm thấy user" });
-    res.json(user);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
+  if (
+    req.headers.authorization &&
+    req.headers.authorization.startsWith("Bearer ")
+  ) {
+    token = req.headers.authorization.split(" ")[1];
   }
-});
 
-// Cập nhật profile + địa chỉ
-router.put("/profile", protect, async (req, res) => {
-  try {
-    const { name, phone, avatarUrl, addresses } = req.body;
-    const user = await User.findById(req.user._id);
-    if (!user) return res.status(404).json({ message: "Không tìm thấy user" });
-
-    if (name !== undefined) user.name = name;
-    if (phone !== undefined) user.phone = phone;                 // giữ SĐT
-    if (avatarUrl !== undefined) user.avatarUrl = avatarUrl;
-    if (Array.isArray(addresses)) user.addresses = addresses;    // fullName, phone, fullAddress, isDefault
-
-    await user.save();
-    const result = await User.findById(user._id).select("-password");
-    res.json(result);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
+  if (!token) {
+    return res
+      .status(401)
+      .json({ message: "Không có token, vui lòng đăng nhập lại." });
   }
-});
 
-module.exports = router;
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.id).select("_id role");
+    if (!user) {
+      return res.status(401).json({ message: "Tài khoản không tồn tại." });
+    }
+
+    req.user = user;
+    next();
+  } catch (err) {
+    console.error("protect middleware error", err);
+    return res
+      .status(401)
+      .json({ message: "Token không hợp lệ hoặc đã hết hạn." });
+  }
+};
+
+const admin = (req, res, next) => {
+  if (req.user && req.user.role === "admin") return next();
+  return res
+    .status(403)
+    .json({ message: "Chỉ quản trị viên mới được phép thực hiện." });
+};
+
+module.exports = { protect, admin };

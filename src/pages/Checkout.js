@@ -29,11 +29,21 @@ export default function Checkout() {
   const [dialog, setDialog] = useState({
     open: false,
     title: "",
-    message: ""
+    message: "",
+    confirmText: "Đóng",
+    cancelText: "Đóng",
+    onConfirm: null
   });
 
   const showDialog = (message, title = "Thông báo") =>
-    setDialog({ open: true, title, message });
+    setDialog({
+      open: true,
+      title,
+      message,
+      confirmText: "Đóng",
+      cancelText: "Đóng",
+      onConfirm: null
+    });
 
   useEffect(() => {
     if (!user) return;
@@ -121,8 +131,14 @@ export default function Checkout() {
 
       await api.post("/orders", payload);
       clearCart();
-      showDialog("Đặt hàng thành công. Cảm ơn bạn đã mua sắm tại PStore.");
-      nav("/profile");
+      setDialog({
+        open: true,
+        title: "Thanh toán thành công",
+        message: "Đặt hàng thành công. Cảm ơn bạn đã mua sắm tại PStore.",
+        confirmText: "Về trang chủ",
+        cancelText: "Ở lại trang",
+        onConfirm: () => nav("/")
+      });
     } catch (e) {
       console.error("POST /orders", e);
       showDialog(
@@ -350,7 +366,9 @@ export default function Checkout() {
             <div className="d-flex justify-content-between mb-1">
               <span>Phí vận chuyển</span>
               <span>
-                {shippingPrice ? shippingPrice.toLocaleString() + " đ" : "Miễn phí"}
+                {shippingPrice
+                  ? shippingPrice.toLocaleString() + " đ"
+                  : "Miễn phí"}
               </span>
             </div>
             <hr />
@@ -389,9 +407,15 @@ export default function Checkout() {
         open={dialog.open}
         title={dialog.title}
         message={dialog.message}
-        confirmText="Đóng"
-        onConfirm={() => setDialog({ ...dialog, open: false })}
-        onCancel={() => setDialog({ ...dialog, open: false })}
+        confirmText={dialog.confirmText}
+        cancelText={dialog.cancelText}
+        onConfirm={() => {
+          if (dialog.onConfirm) dialog.onConfirm();
+          setDialog((d) => ({ ...d, open: false, onConfirm: null }));
+        }}
+        onCancel={() =>
+          setDialog((d) => ({ ...d, open: false, onConfirm: null }))
+        }
       />
     </div>
   );

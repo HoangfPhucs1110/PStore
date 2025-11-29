@@ -17,7 +17,6 @@ import AdminOrders from "./pages/AdminOrders";
 
 import ProtectedRoute from "./components/ProtectedRoute";
 import AdminRoute from "./components/AdminRoute";
-
 import { AuthProvider } from "./context/AuthContext";
 import { CartProvider } from "./context/CartContext";
 
@@ -30,7 +29,8 @@ function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/products" element={<ProductList />} />
-          <Route path="/products/:id" element={<ProductDetail />} />
+          {/* chi tiết theo slug */}
+          <Route path="/products/:slug" element={<ProductDetail />} />
           <Route path="/cart" element={<Cart />} />
 
           <Route
@@ -41,7 +41,6 @@ function App() {
               </ProtectedRoute>
             }
           />
-
           <Route
             path="/profile"
             element={
@@ -51,6 +50,7 @@ function App() {
             }
           />
 
+          {/* ADMIN */}
           <Route
             path="/admin"
             element={
@@ -76,7 +76,7 @@ function App() {
             }
           />
           <Route
-            path="/admin/products/:id/edit"
+            path="/admin/products/:id"
             element={
               <AdminRoute>
                 <AdminProductForm />
