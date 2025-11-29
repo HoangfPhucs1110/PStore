@@ -1,0 +1,77 @@
+.pd-image-box {
+  width: 100%;
+  height: 360px;
+  background: linear-gradient(135deg, #f5f7ff, #eef2ff);
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.pd-main-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  transition: transform 0.3s ease;
+}
+
+.pd-image-box:hover .pd-main-image {
+  transform: scale(1.05);
+}
+
+.pd-nav-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  border: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.6);
+  color: #fff;
+  font-size: 20px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.pd-nav-btn.left {
+  left: 10px;
+}
+
+.pd-nav-btn.right {
+  right: 10px;
+}
+
+.pd-image-box:hover .pd-nav-btn {
+  opacity: 1;
+}
+
+.pd-dots {
+  position: absolute;
+  bottom: 10px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+}
+
+.pd-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.3);
+  transition: all 0.2s ease;
+}
+
+.pd-dot.active {
+  width: 16px;
+  background: #0d6efd;
+}

@@ -1,101 +1,270 @@
-// src/pages/Policy.jsx
-export default function Policy() {
-  return (
-    <div className="container my-4">
-      {/* HEADER */}
-      <div className="mb-4">
-        <h2 className="fw-bold mb-2">Chính sách & bảo hành</h2>
-        <p className="text-muted mb-0">
-          PStore thiết kế chính sách rõ ràng để bạn luôn nắm được quyền lợi của mình
-          khi mua sắm.
-        </p>
+import { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
+import api from "../api";
+import { useCart } from "../context/CartContext";
+import "./ProductDetail.css";
+
+const formatMoney = (n) => {
+  const num = typeof n === "number" ? n : Number(n || 0);
+  return num.toLocaleString();
+};
+
+export default function ProductDetail() {
+  const { slug } = useParams();
+  const { addToCart } = useCart();
+
+  const [product, setProduct] = useState(null);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!slug) {
+      setError("Không tìm thấy sản phẩm.");
+      setLoading(false);
+      return;
+    }
+
+    let ignore = false;
+    setLoading(true);
+    setError("");
+
+    api
+      .get(`/products/slug/${slug}`)
+      .then((res) => {
+        if (ignore) return;
+        const p = res.data;
+        setProduct(p);
+        setActiveIndex(0);
+      })
+      .catch((err) => {
+        console.error("GET /products/slug", err);
+        if (err.response?.status === 404) {
+          setError("Không tìm thấy sản phẩm.");
+        } else {
+          setError("Tải sản phẩm thất bại, vui lòng thử lại sau.");
+        }
+      })
+      .finally(() => {
+        if (!ignore) setLoading(false);
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [slug]);
+
+  if (loading)
+    return (
+      <div className="container my-3">
+        <p>Đang tải...</p>
       </div>
+    );
 
+  if (error)
+    return (
+      <div className="container my-3">
+        <h5>{error}</h5>
+      </div>
+    );
+
+  if (!product)
+    return (
+      <div className="container my-3">
+        <h5>Không tìm thấy sản phẩm</h5>
+      </div>
+    );
+
+  const images = (() => {
+    const arr = [];
+    if (product.thumbnail) arr.push(product.thumbnail);
+    if (Array.isArray(product.images)) {
+      product.images.forEach((img) => {
+        if (img && !arr.includes(img)) arr.push(img);
+      });
+    }
+    return arr;
+  })();
+
+  const activeImg = images[activeIndex] || "";
+  const specs = product.specs || {};
+  const stock = typeof product.stock === "number" ? product.stock : 0;
+  const outOfStock = stock <= 0;
+
+  const handleAdd = () => {
+    if (outOfStock) return;
+    addToCart(product, 1);
+  };
+
+  const handleBuyNow = () => {
+    if (outOfStock) return;
+    addToCart(product, 1);
+    window.location.href = "/checkout";
+  };
+
+  const next = () => {
+    if (!images.length) return;
+    setActiveIndex((i) => (i + 1) % images.length);
+  };
+
+  const prev = () => {
+    if (!images.length) return;
+    setActiveIndex((i) => (i - 1 + images.length) % images.length);
+  };
+
+  return (
+    <div className="container my-3">
       <div className="row g-4">
-        {/* NỘI DUNG CHÍNH */}
-        <div className="col-lg-8">
-          <div className="mb-3 p-3 border rounded-3">
-            <h6 className="fw-semibold mb-2">1. Đổi trả sản phẩm</h6>
-            <ul className="small text-muted mb-0">
-              <li>Đổi mới trong 7 ngày nếu lỗi phần cứng do nhà sản xuất.</li>
-              <li>
-                Máy chưa kích hoạt / chưa đăng nhập tài khoản cá nhân có thể hỗ trợ
-                đổi cấu hình khác (có bù chênh lệch).
-              </li>
-              <li>Không áp dụng đổi trả với lỗi do va đập, rơi vỡ, vào nước...</li>
-            </ul>
+        {/* Hình ảnh */}
+        <div className="col-lg-5">
+          <div className="bg-white rounded-3 shadow-sm p-3 mb-2">
+            <div className="pd-image-box position-relative">
+              {activeImg ? (
+                <img
+                  src={activeImg}
+                  alt={product.name}
+                  className="pd-main-image"
+                  onError={(e) => {
+                    e.currentTarget.src =
+                      "https://via.placeholder.com/400x300?text=No+Image";
+                  }}
+                />
+              ) : (
+                <div className="text-muted small text-center w-100">
+                  Chưa có hình ảnh
+                </div>
+              )}
+
+              {images.length > 1 && (
+                <>
+                  <button
+                    type="button"
+                    className="pd-nav-btn left"
+                    onClick={prev}
+                    aria-label="Prev"
+                  >
+                    ‹
+                  </button>
+                  <button
+                    type="button"
+                    className="pd-nav-btn right"
+                    onClick={next}
+                    aria-label="Next"
+                  >
+                    ›
+                  </button>
+
+                  <div className="pd-dots">
+                    {images.map((_, i) => (
+                      <span
+                        key={i}
+                        className={"pd-dot" + (i === activeIndex ? " active" : "")}
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
           </div>
 
-          <div className="mb-3 p-3 border rounded-3">
-            <h6 className="fw-semibold mb-2">2. Bảo hành</h6>
-            <ul className="small text-muted mb-0">
-              <li>Bảo hành theo tiêu chuẩn từng hãng, có phiếu và hóa đơn đi kèm.</li>
-              <li>
-                Tiếp nhận bảo hành tại PStore, hỗ trợ gửi hãng và thông báo khi hoàn tất.
-              </li>
-              <li>
-                Khách hàng có thể tra cứu thông tin bảo hành qua hotline hoặc email.
-              </li>
-            </ul>
-          </div>
-
-          <div className="mb-3 p-3 border rounded-3">
-            <h6 className="fw-semibold mb-2">3. Vận chuyển</h6>
-            <ul className="small text-muted mb-0">
-              <li>Đóng gói chống sốc, bọc xốp, thùng carton cứng.</li>
-              <li>
-                Hỗ trợ kiểm tra ngoại quan máy khi nhận hàng, mở hộp có quay video để
-                bảo vệ quyền lợi.
-              </li>
-              <li>
-                Miễn phí / giảm phí ship cho đơn đạt mức giá quy định hoặc trong các
-                dịp khuyến mãi.
-              </li>
-            </ul>
-          </div>
-
-          <div className="mb-3 p-3 border rounded-3">
-            <h6 className="fw-semibold mb-2">4. Bảo mật thông tin</h6>
-            <ul className="small text-muted mb-0">
-              <li>
-                Thông tin khách hàng chỉ dùng cho mục đích giao dịch và chăm sóc sau bán.
-              </li>
-              <li>Không chia sẻ cho bên thứ ba nếu không có sự đồng ý của khách.</li>
-            </ul>
-          </div>
+          {images.length > 1 && (
+            <div className="d-flex gap-2 flex-wrap">
+              {images.map((url, i) => (
+                <button
+                  type="button"
+                  key={url}
+                  className="border-0 p-0 bg-transparent"
+                  onClick={() => setActiveIndex(i)}
+                >
+                  <img
+                    src={url}
+                    alt=""
+                    style={{
+                      width: 64,
+                      height: 64,
+                      objectFit: "cover",
+                      borderRadius: 8,
+                      border:
+                        i === activeIndex
+                          ? "2px solid #0d6efd"
+                          : "1px solid #dee2e6"
+                    }}
+                  />
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
-        {/* SIDEBAR + FAQ */}
-        <div className="col-lg-4">
-          <div className="p-3 bg-light rounded-3 mb-3">
-            <h6 className="fw-semibold mb-2">Hỗ trợ nhanh</h6>
-            <p className="small text-muted mb-1">
-              Nếu bạn chưa rõ về điều khoản, hãy liên hệ trực tiếp:
-            </p>
-            <p className="small mb-1">Hotline: 1900.5301</p>
-            <p className="small mb-3">Email: cs@pstore.vn</p>
-            <p className="small text-muted mb-0">
-              Nhân viên PStore luôn cố gắng giải thích dễ hiểu, tránh dùng ngôn ngữ
-              “luật” phức tạp.
-            </p>
+        {/* Thông tin */}
+        <div className="col-lg-7">
+          <div className="bg-white rounded-3 shadow-sm p-3 mb-3">
+            <h4 className="mb-1">{product.name}</h4>
+            <div className="text-muted mb-2">
+              Thương hiệu: {product.brand || "Đang cập nhật"}
+            </div>
+            <div className="d-flex align-items-baseline gap-2 mb-2">
+              <span className="fs-4 fw-bold text-danger">
+                {formatMoney(product.price)} đ
+              </span>
+              {product.oldPrice > product.price && (
+                <span className="text-muted text-decoration-line-through">
+                  {formatMoney(product.oldPrice)} đ
+                </span>
+              )}
+            </div>
+            <div className="mb-3">
+              Tình trạng:{" "}
+              <span
+                className={
+                  outOfStock ? "text-danger fw-semibold" : "text-success fw-semibold"
+                }
+              >
+                {outOfStock ? "Hết hàng" : "Còn hàng"}
+              </span>
+            </div>
+            <div className="d-flex gap-2">
+              <button
+                className="btn btn-primary"
+                onClick={handleAdd}
+                disabled={outOfStock}
+              >
+                {outOfStock ? "Hết hàng" : "Thêm vào giỏ"}
+              </button>
+              <button
+                className="btn btn-outline-primary"
+                onClick={handleBuyNow}
+                disabled={outOfStock}
+              >
+                {outOfStock ? "Hết hàng" : "Mua ngay"}
+              </button>
+            </div>
           </div>
 
-          <div className="p-3 bg-white rounded-3 shadow-sm">
-            <h6 className="fw-semibold mb-2">Câu hỏi thường gặp</h6>
-            <ul className="small text-muted mb-0">
-              <li className="mb-1">
-                <span className="fw-semibold">Mất hóa đơn có bảo hành được không?</span>
-                <br />
-                Vẫn hỗ trợ nếu tra được thông tin mua hàng theo số điện thoại / email.
-              </li>
-              <li className="mb-1">
-                <span className="fw-semibold">
-                  Khi gửi bảo hành có được mượn máy không?
-                </span>
-                <br />
-                Tùy chương trình hỗ trợ, bạn có thể hỏi thêm khi gửi máy.
-              </li>
-            </ul>
+          <div className="bg-white rounded-3 shadow-sm p-3">
+            <h5 className="mb-3">Thông số kỹ thuật</h5>
+            {Object.keys(specs).length ? (
+              <table className="table table-sm mb-3">
+                <tbody>
+                  {Object.entries(specs).map(([k, v]) => (
+                    <tr key={k}>
+                      <th style={{ width: "35%" }}>{k}</th>
+                      <td>{v}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <div className="text-muted small mb-3">
+                Chưa có thông số kỹ thuật cho sản phẩm này.
+              </div>
+            )}
+
+            <h5 className="mb-2">Thông tin sản phẩm</h5>
+            <p className="mb-0">
+              {product.description ||
+                "Chưa có mô tả chi tiết cho sản phẩm này."}
+            </p>
           </div>
         </div>
       </div>

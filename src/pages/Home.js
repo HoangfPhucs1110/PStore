@@ -398,49 +398,54 @@ export default function Home() {
         </div>
       </div>
 
-      {/* XU HƯỚNG HIỆN NAY – CAROUSEL */}
-      <div className="home-section-bg py-4">
-        <div className="container">
-          <div className="d-flex justify-content-between align-items-center mb-2">
-            <h5 className="mb-0">Xu hướng hiện nay</h5>
-            <div className="d-flex gap-2">
-              <button
-                className="btn btn-outline-secondary btn-sm"
-                onClick={prevTrend}
-                disabled={!trendingProducts.length}
-              >
-                &lt;
-              </button>
-              <button
-                className="btn btn-outline-secondary btn-sm"
-                onClick={nextTrend}
-                disabled={!trendingProducts.length}
-              >
-                &gt;
-              </button>
-            </div>
-          </div>
-          <div className="bg-white rounded-3 shadow-sm p-3">
-            {loading ? (
-              <div className="text-center py-4 small text-muted">
-                Đang tải sản phẩm...
-              </div>
-            ) : !trendingProducts.length ? (
-              <div className="text-center py-4 small text-muted">
-                Chưa có sản phẩm xu hướng.
-              </div>
-            ) : (
-              <div className="row g-3">
-                {visibleTrending.map((p) => (
-                  <div key={p._id} className="col-6 col-md-3">
-                    <ProductCard p={p} />
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+{/* XU HƯỚNG HIỆN NAY – CAROUSEL */}
+<div className="home-section-bg py-4">
+  <div className="container">
+    <div className="d-flex justify-content-between align-items-center mb-2">
+      <h5 className="mb-0">Xu hướng hiện nay</h5>
+
+      {trendingProducts.length > 0 && (
+        <div className="trending-nav">
+          <button
+            type="button"
+            className="trending-btn"
+            onClick={prevTrend}
+          >
+            ‹
+          </button>
+          <button
+            type="button"
+            className="trending-btn"
+            onClick={nextTrend}
+          >
+            ›
+          </button>
         </div>
-      </div>
+      )}
+    </div>
+
+    <div className="bg-white rounded-3 shadow-sm p-3">
+      {loading ? (
+        <div className="text-center py-4 small text-muted">
+          Đang tải sản phẩm...
+        </div>
+      ) : !trendingProducts.length ? (
+        <div className="text-center py-4 small text-muted">
+          Chưa có sản phẩm xu hướng.
+        </div>
+      ) : (
+        <div className="row g-3">
+          {visibleTrending.map((p) => (
+            <div key={p._id} className="col-6 col-md-3 trending-card">
+              <ProductCard p={p} />
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  </div>
+</div>
+
 
       {/* GỢI Ý CHO BẠN */}
       <div className="container my-4">

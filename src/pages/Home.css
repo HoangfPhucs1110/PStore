@@ -1,0 +1,96 @@
+.trending-wrapper {
+  position: relative;
+}
+
+.trending-nav {
+  position: absolute;
+  top: -10px;
+  right: 0;
+  display: flex;
+  gap: 8px;
+}
+
+.trending-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: 0.25s ease;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+  font-size: 18px;
+}
+
+.trending-btn:hover {
+  background: #0d6efd;
+  color: #fff;
+  border-color: #0d6efd;
+  transform: scale(1.05);
+}
+
+.trending-btn:active {
+  transform: scale(0.95);
+}
+
+.trending-slide {
+  opacity: 0;
+  transform: translateX(10px);
+  transition: 0.35s ease;
+  pointer-events: none;
+}
+
+.trending-slide.active {
+  opacity: 1;
+  transform: translateX(0);
+  pointer-events: auto;
+}
+.trending-nav {
+  display: flex;
+  gap: 8px;
+}
+
+.trending-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: 0.25s ease;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08);
+  font-size: 18px;
+}
+
+.trending-btn:hover {
+  background: #0d6efd;
+  color: #fff;
+  border-color: #0d6efd;
+  transform: scale(1.05);
+}
+
+.trending-btn:active {
+  transform: scale(0.95);
+}
+
+/* Hiệu ứng mượt khi đổi trang sản phẩm */
+.trending-card {
+  animation: trendingFade 0.35s ease;
+}
+
+@keyframes trendingFade {
+  from {
+    opacity: 0;
+    transform: translateX(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}

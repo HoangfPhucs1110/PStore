@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import api from "../api";
 import { useCart } from "../context/CartContext";
+import "./ProductDetail.css";
 
 const formatMoney = (n) => {
   const num = typeof n === "number" ? n : Number(n || 0);
@@ -13,7 +14,7 @@ export default function ProductDetail() {
   const { addToCart } = useCart();
 
   const [product, setProduct] = useState(null);
-  const [activeImg, setActiveImg] = useState("");
+  const [activeIndex, setActiveIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -34,8 +35,7 @@ export default function ProductDetail() {
         if (ignore) return;
         const p = res.data;
         setProduct(p);
-        const img = p.thumbnail || (p.images && p.images[0]);
-        if (img) setActiveImg(img);
+        setActiveIndex(0);
       })
       .catch((err) => {
         console.error("GET /products/slug", err);
@@ -75,13 +75,19 @@ export default function ProductDetail() {
       </div>
     );
 
-  const images = [];
-  if (product.thumbnail) images.push(product.thumbnail);
-  if (Array.isArray(product.images)) {
-    product.images.forEach((img) => {
-      if (img && !images.includes(img)) images.push(img);
-    });
-  }
+  // KHÔNG dùng hook ở đây nữa, chỉ là biến thường
+  const images = (() => {
+    const arr = [];
+    if (product.thumbnail) arr.push(product.thumbnail);
+    if (Array.isArray(product.images)) {
+      product.images.forEach((img) => {
+        if (img && !arr.includes(img)) arr.push(img);
+      });
+    }
+    return arr;
+  })();
+
+  const activeImg = images[activeIndex] || "";
   const specs = product.specs || {};
   const stock = typeof product.stock === "number" ? product.stock : 0;
   const outOfStock = stock <= 0;
@@ -97,41 +103,79 @@ export default function ProductDetail() {
     window.location.href = "/checkout";
   };
 
+  const next = () => {
+    if (!images.length) return;
+    setActiveIndex((i) => (i + 1) % images.length);
+  };
+
+  const prev = () => {
+    if (!images.length) return;
+    setActiveIndex((i) => (i - 1 + images.length) % images.length);
+  };
+
   return (
     <div className="container my-3">
       <div className="row g-4">
         {/* Hình ảnh */}
         <div className="col-lg-5">
-          <div className="bg-white rounded-3 shadow-sm p-3 mb-2 text-center">
-            {activeImg || images[0] ? (
-              <img
-                src={activeImg || images[0]}
-                alt={product.name}
-                style={{
-                  maxWidth: "100%",
-                  maxHeight: 360,
-                  objectFit: "contain"
-                }}
-                onError={(e) => {
-                  e.currentTarget.src =
-                    "https://via.placeholder.com/400x300?text=No+Image";
-                }}
-              />
-            ) : (
-              <div className="text-muted small">Chưa có hình ảnh</div>
-            )}
+          <div className="bg-white rounded-3 shadow-sm p-3 mb-2">
+            <div className="pd-image-box position-relative">
+              {activeImg ? (
+                <img
+                  src={activeImg}
+                  alt={product.name}
+                  className="pd-main-image"
+                  onError={(e) => {
+                    e.currentTarget.src =
+                      "https://via.placeholder.com/400x300?text=No+Image";
+                  }}
+                />
+              ) : (
+                <div className="text-muted small text-center w-100">
+                  Chưa có hình ảnh
+                </div>
+              )}
+
+              {images.length > 1 && (
+                <>
+                  <button
+                    type="button"
+                    className="pd-nav-btn left"
+                    onClick={prev}
+                    aria-label="Prev"
+                  >
+                    ‹
+                  </button>
+                  <button
+                    type="button"
+                    className="pd-nav-btn right"
+                    onClick={next}
+                    aria-label="Next"
+                  >
+                    ›
+                  </button>
+
+                  <div className="pd-dots">
+                    {images.map((_, i) => (
+                      <span
+                        key={i}
+                        className={"pd-dot" + (i === activeIndex ? " active" : "")}
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
           </div>
+
           {images.length > 1 && (
             <div className="d-flex gap-2 flex-wrap">
-              {images.map((url) => (
+              {images.map((url, i) => (
                 <button
                   type="button"
                   key={url}
-                  className={
-                    "border-0 p-0 bg-transparent " +
-                    (url === activeImg ? "thumb-active" : "")
-                  }
-                  onClick={() => setActiveImg(url)}
+                  className="border-0 p-0 bg-transparent"
+                  onClick={() => setActiveIndex(i)}
                 >
                   <img
                     src={url}
@@ -142,7 +186,7 @@ export default function ProductDetail() {
                       objectFit: "cover",
                       borderRadius: 8,
                       border:
-                        url === activeImg
+                        i === activeIndex
                           ? "2px solid #0d6efd"
                           : "1px solid #dee2e6"
                     }}
@@ -172,7 +216,11 @@ export default function ProductDetail() {
             </div>
             <div className="mb-3">
               Tình trạng:{" "}
-              <span className={outOfStock ? "text-danger fw-semibold" : "text-success fw-semibold"}>
+              <span
+                className={
+                  outOfStock ? "text-danger fw-semibold" : "text-success fw-semibold"
+                }
+              >
                 {outOfStock ? "Hết hàng" : "Còn hàng"}
               </span>
             </div>
