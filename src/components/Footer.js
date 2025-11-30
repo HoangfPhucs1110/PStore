@@ -1,50 +1,82 @@
-import { Link } from "react-router-dom";
+import { FiFacebook, FiYoutube, FiInstagram } from "react-icons/fi";
 
 export default function Footer() {
   return (
-    <footer className="bg-dark text-light pt-4 mt-5">
-      <div className="container">
+    <footer className="bg-dark text-light mt-auto">
+      <div className="container py-4">
         <div className="row g-4">
           <div className="col-md-4">
-            <h5 className="fw-bold mb-2">PStore</h5>
-            <p className="small mb-2">
-              Laptop, PC, gaming gear chính hãng, giá tốt cho học tập, làm việc và giải trí.
+            <h5 className="fw-bold">PStore</h5>
+            <p className="small mb-1">
+              Laptop, PC, gaming gear chính hãng, giá tốt cho học tập, làm việc
+              và giải trí.
             </p>
-            <p className="small mb-1">Hotline: <a href="tel:19005301" className="text-info text-decoration-none">1900.5301</a></p>
-            <p className="small mb-0">Email: <a href="mailto:cs@pstore.vn" className="text-info text-decoration-none">cs@pstore.vn</a></p>
+            <p className="small mb-1">
+              Hotline: <a href="tel:19005301" className="text-info">1900.5301</a>
+            </p>
+            <p className="small mb-0">
+              Email:{" "}
+              <a href="mailto:cs@pstore.vn" className="text-info">
+                cs@pstore.vn
+              </a>
+            </p>
           </div>
 
           <div className="col-md-4">
-            <h6 className="fw-semibold mb-3">Hỗ trợ khách hàng</h6>
+            <h6 className="fw-semibold">Hỗ trợ khách hàng</h6>
             <ul className="list-unstyled small mb-0">
-              <li><Link to="/about" className="text-decoration-none text-light">Giới thiệu PStore</Link></li>
-              <li><Link to="/policy" className="text-decoration-none text-light">Chính sách & bảo hành</Link></li>
-              <li><Link to="/guide" className="text-decoration-none text-light">Hướng dẫn mua hàng</Link></li>
-              <li><Link to="/contact" className="text-decoration-none text-light">Liên hệ / Góp ý</Link></li>
+              <li>
+                <a href="/about" className="text-light text-decoration-none">
+                  Giới thiệu PStore
+                </a>
+              </li>
+              <li>
+                <a href="/policy" className="text-light text-decoration-none">
+                  Chính sách &amp; bảo hành
+                </a>
+              </li>
+              <li>
+                <a href="/guide" className="text-light text-decoration-none">
+                  Hướng dẫn mua hàng
+                </a>
+              </li>
+              <li>
+                <a href="/contact" className="text-light text-decoration-none">
+                  Liên hệ / Góp ý
+                </a>
+              </li>
             </ul>
           </div>
 
           <div className="col-md-4">
-            <h6 className="fw-semibold mb-3">Kết nối & thanh toán</h6>
-            <div className="d-flex gap-2 mb-3">
-              <a href="#" className="btn btn-outline-light btn-sm rounded-circle px-2">f</a>
-              <a href="#" className="btn btn-outline-light btn-sm rounded-circle px-2">▶</a>
-              <a href="#" className="btn btn-outline-light btn-sm rounded-circle px-2">Z</a>
+            <h6 className="fw-semibold">Kết nối &amp; thanh toán</h6>
+            <div className="d-flex align-items-center gap-3 mb-3">
+              <a href="#" className="text-light">
+                <FiFacebook size={22} />
+              </a>
+              <a href="#" className="text-light">
+                <FiYoutube size={22} />
+              </a>
+              <a href="#" className="text-light">
+                <FiInstagram size={22} />
+              </a>
             </div>
-            <div className="small mb-1">Chấp nhận thanh toán:</div>
-            <div className="d-flex flex-wrap gap-2 small">
-              <span className="badge bg-light text-dark">VISA</span>
-              <span className="badge bg-light text-dark">MasterCard</span>
-              <span className="badge bg-light text-dark">Momo</span>
-              <span className="badge bg-light text-dark">ZaloPay</span>
+            <div className="small">
+              <div className="mb-1">Chấp nhận thanh toán:</div>
+              <div className="d-flex flex-wrap gap-2">
+                <span className="badge bg-light text-dark">VISA</span>
+                <span className="badge bg-light text-dark">MasterCard</span>
+                <span className="badge bg-light text-dark">Momo</span>
+                <span className="badge bg-light text-dark">ZaloPay</span>
+              </div>
             </div>
           </div>
         </div>
 
-        <hr className="border-secondary mt-4" />
-        <div className="d-flex flex-column flex-md-row justify-content-between align-items-center small text-secondary pb-2">
+        <hr className="border-secondary my-3" />
+        <div className="d-flex flex-column flex-md-row justify-content-between small text-secondary">
           <span>© 2025 PStore. All rights reserved.</span>
-          <span className="mt-2 mt-md-0">Giao hàng bởi GHN, GHTK, J&T,…</span>
+          <span>Giao hàng bởi GHN, GHTK, J&amp;T,…</span>
         </div>
       </div>
     </footer>

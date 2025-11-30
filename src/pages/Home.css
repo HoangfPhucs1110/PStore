@@ -79,7 +79,6 @@
   transform: scale(0.95);
 }
 
-/* Hiệu ứng mượt khi đổi trang sản phẩm */
 .trending-card {
   animation: trendingFade 0.35s ease;
 }
@@ -93,4 +92,32 @@
     opacity: 1;
     transform: translateX(0);
   }
+}
+.slider-nav-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 42px;
+  height: 42px;
+  border: none;
+  border-radius: 50%;
+  background: #fff;
+  color: #333;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+  cursor: pointer;
+  transition: 0.2s;
+  z-index: 10;
+}
+
+.slider-nav-btn:hover {
+  background: #007bff;
+  color: #fff;
+}
+
+.slider-nav-left {
+  left: -18px;
+}
+
+.slider-nav-right {
+  right: -18px;
 }

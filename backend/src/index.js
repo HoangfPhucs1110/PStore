@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
 const connectDB = require("./config/db");
+const reviewRoutes = require("./routes/reviewRoutes");
 
 dotenv.config();
 connectDB();
@@ -11,6 +12,7 @@ app.use(cors());
 app.use(express.json());
 
 app.get("/", (req, res) => res.send("PStore API v2"));
+
 
 // Auth + profile
 app.use("/api/auth", require("./routes/authRoutes"));
@@ -24,7 +26,7 @@ app.use("/api/wishlists", require("./routes/wishlistRoutes"));
 app.use("/api/banners", require("./routes/bannerRoutes"));
 app.use("/api/coupons", require("./routes/couponRoutes"));
 app.use("/api/admin/users", require("./routes/adminUserRoutes"));
-
+app.use("/api", reviewRoutes);
 app.use("/uploads", express.static("uploads"));
 
 const PORT = process.env.PORT || 5000;

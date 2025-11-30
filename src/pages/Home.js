@@ -2,6 +2,10 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api";
 import ProductCard from "../components/ProductCard";
+import HomeCategorySection from "../components/home/HomeCategorySection";
+import TrendingSlider from "../components/home/TrendingSlider";
+
+
 
 const SECTIONS = [
   { slug: "laptop", title: "Laptop gaming & văn phòng" },
@@ -398,51 +402,22 @@ export default function Home() {
         </div>
       </div>
 
-{/* XU HƯỚNG HIỆN NAY – CAROUSEL */}
+{/* XU HƯỚNG HIỆN NAY */}
 <div className="home-section-bg py-4">
   <div className="container">
     <div className="d-flex justify-content-between align-items-center mb-2">
       <h5 className="mb-0">Xu hướng hiện nay</h5>
-
-      {trendingProducts.length > 0 && (
-        <div className="trending-nav">
-          <button
-            type="button"
-            className="trending-btn"
-            onClick={prevTrend}
-          >
-            ‹
-          </button>
-          <button
-            type="button"
-            className="trending-btn"
-            onClick={nextTrend}
-          >
-            ›
-          </button>
-        </div>
-      )}
     </div>
 
-    <div className="bg-white rounded-3 shadow-sm p-3">
-      {loading ? (
-        <div className="text-center py-4 small text-muted">
-          Đang tải sản phẩm...
-        </div>
-      ) : !trendingProducts.length ? (
-        <div className="text-center py-4 small text-muted">
-          Chưa có sản phẩm xu hướng.
-        </div>
-      ) : (
-        <div className="row g-3">
-          {visibleTrending.map((p) => (
-            <div key={p._id} className="col-6 col-md-3 trending-card">
-              <ProductCard p={p} />
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
+    {loading ? (
+      <div className="text-center py-4 small text-muted">Đang tải...</div>
+    ) : trendingProducts.length === 0 ? (
+      <div className="text-center py-4 small text-muted">
+        Chưa có sản phẩm xu hướng.
+      </div>
+    ) : (
+      <TrendingSlider products={trendingProducts} />
+    )}
   </div>
 </div>
 
@@ -480,32 +455,16 @@ export default function Home() {
       </div>
 
       {/* SECTIONS THEO DANH MỤC */}
-      <div className="container my-4">
+<div className="container my-4">
         {SECTIONS.map((s) => {
           const items = byCategory[s.slug] || [];
-          if (!items.length) return null;
-
           return (
-            <div className="mb-4" key={s.slug}>
-              <div className="d-flex justify-content-between align-items-center mb-2">
-                <h5 className="mb-0">{s.title}</h5>
-                <button
-                  className="btn btn-link small text-primary p-0"
-                  onClick={() => goToCategory(s.slug)}
-                >
-                  Xem tất cả
-                </button>
-              </div>
-              <div className="bg-white rounded-3 shadow-sm p-3">
-                <div className="row g-3">
-                  {items.map((p) => (
-                    <div className="col-6 col-md-3 col-xl-2" key={p._id}>
-                      <ProductCard p={p} />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
+            <HomeCategorySection
+              key={s.slug}
+              title={s.title}
+              items={items}
+              onViewAll={() => goToCategory(s.slug)}
+            />
           );
         })}
       </div>

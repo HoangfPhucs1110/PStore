@@ -7,17 +7,20 @@ export default function AdminDashboard() {
     products: 0,
     orders: 0,
     users: 0,
-    revenueToday: 0
+    revenueToday: 0,
+    reviews: 0
   });
 
   useEffect(() => {
     const load = async () => {
       try {
-        const [p, o, u] = await Promise.all([
+        const [p, o, u, r] = await Promise.all([
           api.get("/products"),
           api.get("/orders"),
-          api.get("/admin/users")
+          api.get("/admin/users"),
+          api.get("/admin/reviews")
         ]);
+
         const today = new Date().toISOString().slice(0, 10);
         const revenueToday = (o.data || [])
           .filter(
@@ -31,7 +34,8 @@ export default function AdminDashboard() {
           products: (p.data || []).length,
           orders: (o.data || []).length,
           users: (u.data || []).length,
-          revenueToday
+          revenueToday,
+          reviews: (r.data || []).length
         });
       } catch (e) {
         console.error(e);
@@ -61,6 +65,13 @@ export default function AdminDashboard() {
       desc: "Tài khoản đã đăng ký",
       link: "/admin/users",
       linkText: "Quản lý người dùng"
+    },
+    {
+      title: "Đánh giá",
+      value: stats.reviews,
+      desc: "Tổng số đánh giá sản phẩm",
+      link: "/admin/reviews",
+      linkText: "Quản lý đánh giá"
     },
     {
       title: "Doanh thu hôm nay",
@@ -106,7 +117,7 @@ export default function AdminDashboard() {
           <div className="bg-white rounded-3 shadow-sm p-3">
             <h6 className="mb-3">Thao tác nhanh</h6>
             <div className="row g-3">
-              <div className="col-md-4">
+              <div className="col-md-3">
                 <Link
                   to="/admin/products/new"
                   className="text-decoration-none"
@@ -121,7 +132,7 @@ export default function AdminDashboard() {
                   </div>
                 </Link>
               </div>
-              <div className="col-md-4">
+              <div className="col-md-3">
                 <Link
                   to="/admin/orders"
                   className="text-decoration-none"
@@ -136,7 +147,7 @@ export default function AdminDashboard() {
                   </div>
                 </Link>
               </div>
-              <div className="col-md-4">
+              <div className="col-md-3">
                 <Link
                   to="/admin/users"
                   className="text-decoration-none"
@@ -147,6 +158,21 @@ export default function AdminDashboard() {
                     </div>
                     <div className="small text-muted">
                       Xem danh sách, phân quyền user.
+                    </div>
+                  </div>
+                </Link>
+              </div>
+              <div className="col-md-3">
+                <Link
+                  to="/admin/reviews"
+                  className="text-decoration-none"
+                >
+                  <div className="p-3 border rounded-3 h-100 hover-shadow-sm">
+                    <div className="fw-semibold mb-1">
+                      Quản lý đánh giá
+                    </div>
+                    <div className="small text-muted">
+                      Duyệt, ẩn hoặc xóa đánh giá xấu.
                     </div>
                   </div>
                 </Link>
@@ -164,6 +190,7 @@ export default function AdminDashboard() {
               <li>Cập nhật tồn kho sau khi nhập hàng.</li>
               <li>Gắn cờ sản phẩm nổi bật để đẩy lên trang chủ.</li>
               <li>Thường xuyên sao lưu dữ liệu database.</li>
+              <li>Theo dõi đánh giá xấu để xử lý kịp thời.</li>
             </ul>
           </div>
         </div>

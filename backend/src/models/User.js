@@ -8,7 +8,7 @@ const addressSchema = new mongoose.Schema(
     address: String,
     isDefault: { type: Boolean, default: false }
   },
-  { _id: false } // giữ như file ban đầu
+  { _id: false }
 );
 
 const userSchema = new mongoose.Schema(
