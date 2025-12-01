@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { productService } from "../../services/productService";
+import { categoryService } from "../../services/categoryService";
 import AdminSidebar from "../../components/admin/AdminSidebar";
 import { getImageUrl } from "../../utils/constants";
-import { FiTrash2, FiPlus, FiX } from "react-icons/fi";
+import { FiTrash2, FiPlus, FiX, FiStar, FiCheck } from "react-icons/fi";
 import { useNotification } from "../../context/NotificationContext";
 
 export default function AdminProductForm() {
@@ -13,18 +14,24 @@ export default function AdminProductForm() {
   
   const [form, setForm] = useState({ 
     name: "", slug: "", 
-    price: 0, 
-    oldPrice: 0, 
+    price: 0,       // Giá bán
+    importPrice: 0, // <--- MỚI: Giá gốc
+    oldPrice: 0,    // Giá niêm yết (để hiện gạch ngang)
     stock: 0, 
-    categorySlug: "laptop", brand: "", description: "", 
-    images: [] 
+    categorySlug: "", 
+    brand: "", description: "", 
+    images: [],
+    thumbnail: "" 
   });
 
+  const [categories, setCategories] = useState([]);
   const [discountPercent, setDiscountPercent] = useState(0);
   const [specsList, setSpecsList] = useState([{ key: "", value: "" }]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    categoryService.getAll().then(setCategories).catch(err => console.error("Lỗi load danh mục:", err));
+
     if (id) {
       setLoading(true);
       productService.getById(id)
@@ -33,15 +40,16 @@ export default function AdminProductForm() {
             name: data.name || "",
             slug: data.slug || "",
             price: data.price || 0,
+            importPrice: data.importPrice || 0, // <--- Load giá gốc
             oldPrice: data.oldPrice || 0,
             stock: data.stock || 0,
-            categorySlug: data.categorySlug || "laptop",
+            categorySlug: data.categorySlug || "",
             brand: data.brand || "",
             description: data.description || "",
-            images: data.images || []
+            images: data.images || [],
+            thumbnail: data.thumbnail || (data.images?.[0] || "") 
           });
 
-          // Tính % giảm giá khi load
           if (data.oldPrice > data.price) {
             setDiscountPercent(Math.round(((data.oldPrice - data.price) / data.oldPrice) * 100));
           } else {
@@ -56,11 +64,23 @@ export default function AdminProductForm() {
     }
   }, [id]);
 
-  // --- LOGIC TÍNH GIÁ ĐÃ SỬA ---
+  // Tự động tính giá bán khi thay đổi giá gốc (Tuỳ chọn logic, ở đây tôi để nhập tay độc lập)
+  // Nhưng tự động tính giá bán khi đổi % giảm giá
+  const handleDiscountChange = (e) => {
+    let val = Number(e.target.value);
+    if (val < 0) val = 0;
+    if (val > 100) val = 100;
+    
+    setDiscountPercent(val);
+    if (form.oldPrice > 0) {
+        const newPrice = Math.round(form.oldPrice * (1 - val / 100));
+        setForm(prev => ({ ...prev, price: newPrice }));
+    }
+  };
+
   const handleOldPriceChange = (e) => {
     const val = Number(e.target.value);
     setForm(prev => {
-        // Nếu chưa nhập giá bán hoặc giá bán đang bằng 0 -> Tự gán bằng giá gốc
         const newPrice = discountPercent > 0 
             ? Math.round(val * (1 - discountPercent / 100)) 
             : val;
@@ -68,25 +88,10 @@ export default function AdminProductForm() {
     });
   };
 
-  const handleDiscountChange = (e) => {
-    let val = Number(e.target.value);
-    if (val < 0) val = 0;
-    if (val > 100) val = 100;
-    
-    setDiscountPercent(val);
-    
-    // Tự tính lại Giá bán
-    if (form.oldPrice > 0) {
-        const newPrice = Math.round(form.oldPrice * (1 - val / 100));
-        setForm(prev => ({ ...prev, price: newPrice }));
-    }
-  };
-
   const handlePriceChange = (e) => {
     const val = Number(e.target.value);
     setForm(prev => ({ ...prev, price: val }));
-    
-    // Tự tính lại % giảm
+    // Tính ngược lại % giảm
     if (form.oldPrice > 0 && val <= form.oldPrice) {
         const percent = Math.round(((form.oldPrice - val) / form.oldPrice) * 100);
         setDiscountPercent(percent);
@@ -95,22 +100,22 @@ export default function AdminProductForm() {
     }
   };
 
-  // --- XỬ LÝ ẢNH ĐÃ SỬA ---
+  // Upload ảnh
   const handleImage = async (e) => {
     const file = e.target.files[0];
     if(file) {
         try {
-            const fd = new FormData(); fd.append("image", file);
-            
-            // Gọi API upload
+            const fd = new FormData();
+            fd.append("image", file);
             const res = await productService.uploadImage(fd);
-            
-            // Backend trả về: { url: "https://..." } hoặc chuỗi trực tiếp
-            // Ta cần lấy đúng chuỗi URL
             const url = typeof res === 'object' ? res.url : res;
-
+            
             if (url) {
-                setForm(prev => ({...prev, images: [url, ...prev.images]}));
+                setForm(prev => {
+                    const newImages = [url, ...prev.images];
+                    const newThumb = prev.thumbnail ? prev.thumbnail : url;
+                    return { ...prev, images: newImages, thumbnail: newThumb };
+                });
                 notify("Upload ảnh thành công", "success");
             } else {
                 notify("Không nhận được link ảnh từ server", "error");
@@ -122,10 +127,25 @@ export default function AdminProductForm() {
     }
   }
 
-  const removeImage = (index) => setForm(prev => ({...prev, images: prev.images.filter((_, i) => i !== index)}));
-  
+  const removeImage = (index) => {
+    setForm(prev => {
+        const imageToRemove = prev.images[index];
+        const newImages = prev.images.filter((_, i) => i !== index);
+        let newThumb = prev.thumbnail;
+        if (imageToRemove === prev.thumbnail) {
+            newThumb = newImages.length > 0 ? newImages[0] : "";
+        }
+        return { ...prev, images: newImages, thumbnail: newThumb };
+    });
+  };
+
+  const setThumbnail = (url) => {
+      setForm(prev => ({ ...prev, thumbnail: url }));
+      notify("Đã chọn ảnh đại diện", "success");
+  };
+
   const handleSpecChange = (index, field, value) => { 
-      const l = [...specsList]; 
+      const l = [...specsList];
       l[index][field] = value; 
       setSpecsList(l); 
   };
@@ -134,19 +154,18 @@ export default function AdminProductForm() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    // Validate cơ bản
-    if (form.price <= 0) {
-        notify("Giá bán phải lớn hơn 0", "warning");
-        return;
-    }
+    if (form.price <= 0) return notify("Giá bán phải lớn hơn 0", "warning");
+    if (form.importPrice > form.price) notify("Cảnh báo: Giá nhập đang cao hơn giá bán!", "warning");
 
     const specsObject = {};
     specsList.forEach(item => {
         if (item.key.trim() && item.value.trim()) specsObject[item.key.trim()] = item.value.trim();
     });
+    
+    let finalThumbnail = form.thumbnail;
+    if (!finalThumbnail && form.images.length > 0) finalThumbnail = form.images[0];
 
-    const payload = { ...form, specs: specsObject };
+    const payload = { ...form, thumbnail: finalThumbnail, specs: specsObject };
 
     try {
         if (id) await productService.update(id, payload);
@@ -170,60 +189,100 @@ export default function AdminProductForm() {
         <form onSubmit={handleSubmit} className="card border-0 shadow-sm p-4">
             <div className="row g-3">
                 <div className="col-12"><h6 className="text-primary fw-bold border-bottom pb-2">1. Thông tin chung</h6></div>
+                
                 <div className="col-md-6"><label className="form-label">Tên sản phẩm</label><input className="form-control" value={form.name} onChange={e=>setForm({...form, name: e.target.value})} required/></div>
                 <div className="col-md-6"><label className="form-label">Slug</label><input className="form-control" value={form.slug} onChange={e=>setForm({...form, slug: e.target.value})} required/></div>
                 
+                {/* --- KHU VỰC GIÁ (ĐÃ SỬA ĐỂ THÊM GIÁ GỐC) --- */}
                 <div className="col-12">
                     <div className="bg-light p-3 rounded border">
-                        <label className="form-label fw-bold mb-2">Giá & Khuyến mãi</label>
+                        <label className="form-label fw-bold mb-2">Quản lý Giá & Lợi nhuận</label>
                         <div className="row g-3">
-                            <div className="col-md-4">
-                                <label className="form-label small text-muted">Giá gốc</label>
+                            <div className="col-md-3">
+                                <label className="form-label small text-muted">Giá nhập (Giá gốc)</label>
+                                <input type="number" className="form-control border-warning" value={form.importPrice} onChange={e=>setForm({...form, importPrice: Number(e.target.value)})} min="0" placeholder="Để tính lãi"/>
+                            </div>
+                            <div className="col-md-3">
+                                <label className="form-label small text-muted">Giá niêm yết (Giá cũ)</label>
                                 <input type="number" className="form-control" value={form.oldPrice} onChange={handleOldPriceChange} min="0"/>
                             </div>
-                            <div className="col-md-4">
-                                <label className="form-label small text-muted">Giảm (%)</label>
+                            <div className="col-md-3">
+                                <label className="form-label small text-muted">Giảm giá (%)</label>
                                 <input type="number" className="form-control text-danger fw-bold" value={discountPercent} onChange={handleDiscountChange} min="0" max="100"/>
                             </div>
-                            <div className="col-md-4">
-                                <label className="form-label small text-muted">Giá bán (Bắt buộc)</label>
+                            <div className="col-md-3">
+                                <label className="form-label small text-muted">Giá bán thực tế <span className="text-danger">*</span></label>
                                 <input type="number" className="form-control fw-bold text-primary" value={form.price} onChange={handlePriceChange} required min="1"/>
+                            </div>
+                            <div className="col-12">
+                                <small className="text-muted fst-italic">
+                                    Lợi nhuận dự kiến: <span className="fw-bold text-success">{(form.price - form.importPrice).toLocaleString()}đ</span> / sản phẩm
+                                </small>
                             </div>
                         </div>
                     </div>
                 </div>
 
                 <div className="col-md-4"><label className="form-label">Tồn kho</label><input type="number" className="form-control" value={form.stock} onChange={e=>setForm({...form, stock: Number(e.target.value)})}/></div>
-                <div className="col-md-4"><label className="form-label">Danh mục</label>
+                
+                <div className="col-md-4">
+                    <label className="form-label">Danh mục</label>
                     <select className="form-select" value={form.categorySlug} onChange={e=>setForm({...form, categorySlug: e.target.value})}>
-                        <option value="laptop">Laptop</option><option value="man-hinh">Màn hình</option><option value="ban-phim">Bàn phím</option><option value="chuot">Chuột</option><option value="tai-nghe">Tai nghe</option><option value="ghe-gaming">Ghế Gaming</option>
+                        <option value="">-- Chọn danh mục --</option>
+                        {categories.map(cat => (
+                            <option key={cat._id} value={cat.slug}>{cat.name}</option>
+                        ))}
                     </select>
                 </div>
+
                 <div className="col-md-4"><label className="form-label">Thương hiệu</label><input className="form-control" value={form.brand} onChange={e=>setForm({...form, brand: e.target.value})}/></div>
                 <div className="col-12"><label className="form-label">Mô tả</label><textarea className="form-control" rows="3" value={form.description} onChange={e=>setForm({...form, description: e.target.value})}/></div>
 
+                {/* --- KHU VỰC HÌNH ẢNH (GIỮ NGUYÊN TÍNH NĂNG CHỌN THUMBNAIL) --- */}
                 <div className="col-12 mt-4"><h6 className="text-primary fw-bold border-bottom pb-2">2. Hình ảnh</h6></div>
                 <div className="col-12">
                     <input type="file" className="form-control mb-3" onChange={handleImage} accept="image/*"/>
+                    
                     <div className="d-flex gap-3 flex-wrap">
-                        {form.images?.map((img, i) => (
-                            <div key={i} className="position-relative border rounded p-1 bg-white" style={{width: 100, height: 100}}>
-                                <img 
-                                    src={getImageUrl(img)} 
-                                    className="w-100 h-100 object-fit-contain rounded" 
-                                    alt=""
-                                    onError={(e) => e.target.src = "https://via.placeholder.com/100?text=Error"}
-                                />
-                                <button type="button" className="btn btn-danger btn-sm position-absolute top-0 end-0 translate-middle rounded-circle p-0 d-flex align-items-center justify-content-center" style={{width: 24, height: 24}} onClick={() => removeImage(i)}><FiX size={14}/></button>
-                            </div>
-                        ))}
+                        {form.images?.map((img, i) => {
+                            const isThumbnail = img === form.thumbnail;
+                            return (
+                                <div key={i} className={`position-relative border rounded p-1 bg-white ${isThumbnail ? 'border-primary border-2 shadow-sm' : ''}`} style={{width: 120, height: 120}}>
+                                    <img src={getImageUrl(img)} className="w-100 h-100 object-fit-contain rounded" alt="" onError={(e) => e.target.src = "https://via.placeholder.com/100?text=Error"}/>
+                                    
+                                    <button type="button" className="btn btn-danger btn-sm position-absolute top-0 end-0 translate-middle rounded-circle p-0 d-flex align-items-center justify-content-center shadow-sm" style={{width: 24, height: 24, zIndex: 10}} onClick={() => removeImage(i)}>
+                                        <FiX size={14}/>
+                                    </button>
+
+                                    <button type="button" className={`btn btn-sm position-absolute bottom-0 start-0 m-1 rounded-circle p-1 d-flex align-items-center justify-content-center shadow-sm ${isThumbnail ? 'btn-warning text-white' : 'btn-light text-secondary'}`} style={{width: 28, height: 28, zIndex: 5}} onClick={() => setThumbnail(img)} title={isThumbnail ? "Ảnh đại diện hiện tại" : "Đặt làm ảnh đại diện"}>
+                                        {isThumbnail ? <FiCheck size={16}/> : <FiStar size={16}/>}
+                                    </button>
+
+                                    {isThumbnail && <span className="position-absolute top-0 start-0 badge bg-primary m-1" style={{fontSize: 9}}>Main</span>}
+                                </div>
+                            );
+                        })}
                     </div>
                 </div>
 
                 <div className="col-12 mt-4"><h6 className="text-primary fw-bold border-bottom pb-2">3. Thông số kỹ thuật</h6></div>
-                <div className="col-12"><div className="bg-light p-3 rounded">{specsList.map((spec, index) => (<div key={index} className="row g-2 mb-2 align-items-center"><div className="col-md-4"><input className="form-control form-control-sm" placeholder="Tên thông số" value={spec.key} onChange={(e) => handleSpecChange(index, "key", e.target.value)}/></div><div className="col-md-7"><input className="form-control form-control-sm" placeholder="Giá trị" value={spec.value} onChange={(e) => handleSpecChange(index, "value", e.target.value)}/></div><div className="col-md-1 text-center"><button type="button" className="btn btn-sm text-danger" onClick={() => removeSpecRow(index)}><FiTrash2 /></button></div></div>))}<button type="button" className="btn btn-sm btn-outline-primary mt-2" onClick={addSpecRow}><FiPlus /> Thêm thông số</button></div></div>
+                <div className="col-12">
+                    <div className="bg-light p-3 rounded">
+                        {specsList.map((spec, index) => (
+                            <div key={index} className="row g-2 mb-2 align-items-center">
+                                <div className="col-md-4"><input className="form-control form-control-sm" placeholder="Tên thông số" value={spec.key} onChange={(e) => handleSpecChange(index, "key", e.target.value)}/></div>
+                                <div className="col-md-7"><input className="form-control form-control-sm" placeholder="Giá trị" value={spec.value} onChange={(e) => handleSpecChange(index, "value", e.target.value)}/></div>
+                                <div className="col-md-1 text-center"><button type="button" className="btn btn-sm text-danger" onClick={() => removeSpecRow(index)}><FiTrash2 /></button></div>
+                            </div>
+                        ))}
+                        <button type="button" className="btn btn-sm btn-outline-primary mt-2" onClick={addSpecRow}><FiPlus /> Thêm thông số</button>
+                    </div>
+                </div>
 
-                <div className="col-12 mt-4 pt-3 border-top d-flex gap-3"><button className="btn btn-primary px-4 fw-bold">LƯU SẢN PHẨM</button><button type="button" className="btn btn-light px-4" onClick={() => navigate("/admin/products")}>Hủy</button></div>
+                <div className="col-12 mt-4 pt-3 border-top d-flex gap-3">
+                    <button className="btn btn-primary px-4 fw-bold">LƯU SẢN PHẨM</button>
+                    <button type="button" className="btn btn-light px-4" onClick={() => navigate("/admin/products")}>Hủy</button>
+                </div>
             </div>
         </form>
       </div>

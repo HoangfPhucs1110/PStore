@@ -2,26 +2,53 @@ import { useEffect, useState } from "react";
 import { orderService } from "../../services/orderService";
 import AdminSidebar from "../../components/admin/AdminSidebar";
 import { getImageUrl } from "../../utils/constants";
-import { FiEye } from "react-icons/fi";
-import { useNotification } from "../../context/NotificationContext"; // <--- Import Notification
+import { FiEye, FiTrash2 } from "react-icons/fi";
+import { useNotification } from "../../context/NotificationContext";
 
 export default function AdminOrders() {
   const [orders, setOrders] = useState([]);
   const [selectedOrder, setSelectedOrder] = useState(null);
-  const { notify } = useNotification(); // <--- Hook
+  const { notify, confirm } = useNotification();
 
-  useEffect(() => {
-    orderService.getAll().then(setOrders);
-  }, []);
+  const loadOrders = () => {
+    orderService.getAll().then(setOrders).catch(console.error);
+  };
+
+  useEffect(() => { loadOrders(); }, []);
 
   const handleStatus = async (id, status) => {
     try {
       await orderService.updateStatus(id, status);
-      setOrders(prev => prev.map(o => o._id === id ? { ...o, status } : o));
-      notify("Cập nhật trạng thái đơn hàng thành công", "success"); // <--- Toast
+      
+      // Cập nhật State cục bộ ngay lập tức để UI phản hồi nhanh
+      setOrders(prev => prev.map(o => {
+          if (o._id === id) {
+              return { 
+                  ...o, 
+                  status: status,
+                  // Nếu chọn hoàn thành -> Tự động đổi trạng thái thanh toán trên giao diện
+                  paymentStatus: status === 'completed' ? 'paid' : o.paymentStatus 
+              };
+          }
+          return o;
+      }));
+      
+      notify("Cập nhật trạng thái thành công", "success");
     } catch {
-      notify("Lỗi cập nhật đơn hàng", "error");
+      notify("Lỗi cập nhật", "error");
     }
+  };
+
+  const handleDelete = (id) => {
+      confirm("Bạn chắc chắn muốn xóa đơn hàng này?", async () => {
+          try {
+              await orderService.delete(id);
+              notify("Đã xóa đơn hàng", "success");
+              loadOrders();
+          } catch (err) {
+              notify("Lỗi khi xóa đơn hàng", "error");
+          }
+      });
   };
 
   return (
@@ -36,10 +63,10 @@ export default function AdminOrders() {
                 <tr>
                   <th className="ps-4">Mã đơn</th>
                   <th>Khách hàng</th>
-                  <th>Ngày đặt</th>
+                  <th>Thanh toán</th>
                   <th>Tổng tiền</th>
                   <th>Trạng thái</th>
-                  <th className="text-center">Chi tiết</th>
+                  <th className="text-end pe-4">Thao tác</th>
                 </tr>
               </thead>
               <tbody>
@@ -50,7 +77,20 @@ export default function AdminOrders() {
                         <div className="fw-medium">{o.shippingInfo?.fullName}</div>
                         <div className="small text-muted">{o.shippingInfo?.phone}</div>
                     </td>
-                    <td className="text-muted small">{new Date(o.createdAt).toLocaleDateString("vi-VN")}</td>
+                    
+                    <td>
+                        <span className={`badge ${o.paymentMethod === 'PAYOS' ? 'bg-primary' : 'bg-dark'}`}>
+                            {o.paymentMethod === 'PAYOS' ? 'ONLINE (PayOS)' : 'COD'}
+                        </span>
+                        <div className="small mt-1 text-muted">
+                            {/* Logic hiển thị trạng thái thanh toán */}
+                            {o.paymentStatus === 'paid' ? 
+                                <span className="text-success fw-bold">✓ Đã thanh toán</span> : 
+                                <span className="text-warning fw-bold">Chưa thanh toán</span>
+                            }
+                        </div>
+                    </td>
+
                     <td className="fw-bold text-danger">{o.total.toLocaleString()}đ</td>
                     <td>
                       <select 
@@ -59,7 +99,7 @@ export default function AdminOrders() {
                             o.status === 'canceled' ? 'text-secondary bg-secondary-subtle' :
                             o.status === 'shipping' ? 'text-info bg-info-subtle' : 'text-warning bg-warning-subtle'
                         }`}
-                        style={{width: 140, cursor: 'pointer'}}
+                        style={{width: 130, cursor: 'pointer'}}
                         value={o.status} 
                         onChange={(e) => handleStatus(o._id, e.target.value)}
                       >
@@ -69,14 +109,9 @@ export default function AdminOrders() {
                         <option value="canceled">Đã hủy</option>
                       </select>
                     </td>
-                    <td className="text-center">
-                        <button 
-                            className="btn btn-light btn-sm text-primary"
-                            title="Xem chi tiết đơn hàng"
-                            onClick={() => setSelectedOrder(o)}
-                        >
-                            <FiEye size={18} />
-                        </button>
+                    <td className="text-end pe-4">
+                        <button className="btn btn-light btn-sm text-primary me-2" onClick={() => setSelectedOrder(o)} title="Xem chi tiết"><FiEye /></button>
+                        <button className="btn btn-light btn-sm text-danger" onClick={() => handleDelete(o._id)} title="Xóa đơn hàng"><FiTrash2 /></button>
                     </td>
                   </tr>
                 ))}
@@ -86,7 +121,6 @@ export default function AdminOrders() {
         </div>
       </div>
 
-      {/* MODAL CHI TIẾT */}
       {selectedOrder && (
         <div className="modal d-block" style={{backgroundColor: "rgba(0,0,0,0.5)"}}>
             <div className="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
@@ -106,9 +140,14 @@ export default function AdminOrders() {
                             <div className="col-md-6 ps-md-4">
                                 <h6 className="text-primary fw-bold mb-3 text-uppercase small ls-1">Thông tin đơn hàng</h6>
                                 <p className="mb-2"><strong>Ngày đặt:</strong> {new Date(selectedOrder.createdAt).toLocaleString("vi-VN")}</p>
-                                <p className="mb-2"><strong>Thanh toán:</strong> <span className="badge bg-light text-dark border">{selectedOrder.paymentMethod}</span></p>
+                                <p className="mb-2">
+                                    <strong>Thanh toán:</strong> <span className="badge bg-primary ms-1">{selectedOrder.paymentMethod}</span>
+                                    <span className="ms-2 small fw-bold text-success">
+                                        ({selectedOrder.paymentStatus === 'paid' ? 'Đã thanh toán' : 'Chưa thanh toán'})
+                                    </span>
+                                </p>
                                 <div className="p-2 bg-warning-subtle rounded border border-warning-subtle">
-                                    <strong>Ghi chú:</strong> <span className="fst-italic">{selectedOrder.shippingInfo?.note || selectedOrder.note || "Không có ghi chú"}</span>
+                                    <strong>Ghi chú:</strong> <span className="fst-italic">{selectedOrder.note || "Không có ghi chú"}</span>
                                 </div>
                             </div>
                         </div>
@@ -116,11 +155,7 @@ export default function AdminOrders() {
                         <div className="table-responsive mb-3 border rounded">
                             <table className="table table-borderless align-middle mb-0">
                                 <thead className="table-light border-bottom">
-                                    <tr>
-                                        <th className="ps-3">Sản phẩm</th>
-                                        <th className="text-center">SL</th>
-                                        <th className="text-end pe-3">Thành tiền</th>
-                                    </tr>
+                                    <tr><th className="ps-3">Sản phẩm</th><th className="text-center">SL</th><th className="text-end pe-3">Thành tiền</th></tr>
                                 </thead>
                                 <tbody>
                                     {selectedOrder.items.map((item, idx) => (
@@ -138,16 +173,14 @@ export default function AdminOrders() {
                                 </tbody>
                             </table>
                         </div>
-                        <div className="d-flex flex-column align-items-end">
+                        <div className="d-flex justify-content-end">
                             <div className="d-flex justify-content-between w-50">
                                 <span className="fw-bold fs-5">Tổng cộng:</span>
                                 <span className="fw-bold fs-5 text-danger">{selectedOrder.total?.toLocaleString()}đ</span>
                             </div>
                         </div>
                     </div>
-                    <div className="modal-footer bg-light">
-                        <button className="btn btn-secondary px-4" onClick={() => setSelectedOrder(null)}>Đóng</button>
-                    </div>
+                    <div className="modal-footer bg-light"><button className="btn btn-secondary px-4" onClick={() => setSelectedOrder(null)}>Đóng</button></div>
                 </div>
             </div>
         </div>

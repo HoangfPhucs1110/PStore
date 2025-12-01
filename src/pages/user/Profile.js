@@ -35,19 +35,48 @@ export default function Profile() {
     if (t) setTab(t);
   }, [location.search]);
 
-  // 2. Load dữ liệu User ban đầu
+  // 2. Load dữ liệu User ban đầu (ĐÃ SỬA LỖI TẢI SỔ ĐỊA CHỈ)
   useEffect(() => {
+    const fetchProfileDetails = async () => {
+        if (!user) return;
+        setLoading(true); // Bật loading khi tải dữ liệu
+        try {
+            // FIX (Sổ địa chỉ): Gọi API getMe để đảm bảo lấy được dữ liệu addresses chi tiết nhất
+            const detailedUser = await authService.getMe();
+            
+            // Cập nhật Context user (nếu có thay đổi) và State local
+            setUser(detailedUser);
+            
+            setProfile({ 
+                name: detailedUser.name || "", 
+                phone: detailedUser.phone || "", 
+                avatarUrl: detailedUser.avatarUrl || "" 
+            });
+            // FIX: Lấy mảng addresses từ dữ liệu chi tiết
+            setAddresses(detailedUser.addresses || []);
+        } catch (err) {
+            console.error("Lỗi tải chi tiết profile:", err);
+            // Fallback về dữ liệu user cũ nếu API lỗi
+            setProfile({ 
+              name: user.name || "", 
+              phone: user.phone || "", 
+              avatarUrl: user.avatarUrl || "" 
+            });
+            setAddresses(user.addresses || []); 
+        } finally {
+             // Tắt loading sau khi hoàn thành (Đã giữ nguyên logic cũ là không bật loading ở đây)
+            setLoading(false);
+        }
+    };
+    
     if (user) {
-      setProfile({ 
-        name: user.name || "", 
-        phone: user.phone || "", 
-        avatarUrl: user.avatarUrl || "" 
-      });
-      setAddresses(user.addresses || []);
+      // Chỉ chạy fetchOrders khi tab là orders
+      if (tab !== "orders") fetchProfileDetails(); 
+      // Nếu tab là orders, fetchOrders sẽ tự xử lý load.
     }
-  }, [user]);
+  }, [user, setUser]); // Thêm setUser vào dependency để useEffect chạy khi Context user thay đổi
 
-  // 3. Hàm tải lại đơn hàng (dùng khi tab Orders active hoặc khi vừa hủy đơn)
+  // 3. Hàm tải lại đơn hàng (GIỮ NGUYÊN)
   const fetchOrders = () => {
     setLoading(true);
     orderService.getMyOrders()
@@ -75,13 +104,16 @@ export default function Profile() {
         phone: updatedUser.phone, 
         avatarUrl: updatedUser.avatarUrl 
       });
-      setAddresses(updatedUser.addresses || []);
+      // FIX (Sổ địa chỉ): Cập nhật addresses từ response của API
+      setAddresses(updatedUser.addresses || []); 
       
       // Thông báo thành công (Toast)
       notify("Cập nhật thông tin thành công!", "success");
+      return true; // Thêm return true để ProfileAddresses có thể reset form
     } catch (err) {
       // Thông báo lỗi
       notify(err.response?.data?.message || "Cập nhật thất bại", "error");
+      return false; // Thêm return false
     } finally {
       setSaving(false);
     }
@@ -94,35 +126,38 @@ export default function Profile() {
 
     // Validate loại file ảnh
     if (!file.type.startsWith("image/")) {
-        notify("Vui lòng chọn file ảnh hợp lệ", "warning");
-        return;
+      notify("Vui lòng chọn file ảnh hợp lệ", "warning");
+      return;
     }
 
     try {
-        // Tạo FormData gửi lên server
-        const fd = new FormData(); 
-        fd.append("avatar", file);
-        
-        // Gọi API
-        await authService.uploadAvatar(fd); 
-        
-        // Refresh lại thông tin user để lấy URL ảnh mới nhất từ DB
-        const updated = await authService.getMe();
-        setUser(updated);
-        setProfile(prev => ({...prev, avatarUrl: updated.avatarUrl}));
-        
-        notify("Đổi ảnh đại diện thành công!", "success");
+      // Tạo FormData gửi lên server
+      const fd = new FormData(); 
+      fd.append("avatar", file);
+      
+      // Gọi API
+      await authService.uploadAvatar(fd); 
+      
+      // Refresh lại thông tin user để lấy URL ảnh mới nhất từ DB
+      const updated = await authService.getMe();
+      setUser(updated);
+      setProfile(prev => ({...prev, avatarUrl: updated.avatarUrl}));
+      // FIX (Sổ địa chỉ): Cập nhật addresses
+      setAddresses(updated.addresses || []); 
+      
+      notify("Đổi ảnh đại diện thành công!", "success");
     } catch(err) {
-        notify("Lỗi upload ảnh", "error");
+      notify("Lỗi upload ảnh", "error");
     } finally {
-        // Reset input file để có thể chọn lại cùng 1 ảnh nếu muốn
-        if (fileInputRef.current) fileInputRef.current.value = "";
+      // Reset input file để có thể chọn lại cùng 1 ảnh nếu muốn
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
   // --- HÀM XỬ LÝ ĐỊA CHỈ (Gọi lại handleUpdateProfile) ---
   const handleSaveAddresses = (newAddressList) => {
-    handleUpdateProfile({ addresses: newAddressList });
+    // FIX (Sổ địa chỉ): Gọi hàm cập nhật profile với payload addresses
+    return handleUpdateProfile({ addresses: newAddressList });
   };
 
   return (
@@ -170,7 +205,7 @@ export default function Profile() {
                 />
               )}
               
-              {/* Tab 3: Quản lý đơn hàng */}
+              {/* Tab 3: Quản lý đơn hàng (GIỮ NGUYÊN) */}
               {tab === "orders" && (
                 <ProfileOrders 
                   orders={orders} 

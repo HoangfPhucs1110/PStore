@@ -16,12 +16,21 @@ const userSchema = new mongoose.Schema(
     name: { type: String, required: true },
     email: { type: String, unique: true, required: true },
     passwordHash: { type: String, required: true },
-    role: { type: String, enum: ["user", "admin"], default: "user" },
+    
+    // --- CẬP NHẬT Ở ĐÂY ---
+    role: { 
+      type: String, 
+      enum: ["user", "admin", "staff"], // Thêm "staff" vào đây
+      default: "user" 
+    },
+    
     phone: String,
     gender: { type: String, enum: ["male", "female"], default: "male" },
     avatarUrl: String,
     addresses: [addressSchema],
-    isActive: { type: Boolean, default: true }
+    isActive: { type: Boolean, default: true },
+    resetPasswordToken: String,
+    resetPasswordExpire: Date
   },
   { timestamps: { createdAt: true, updatedAt: true } }
 );

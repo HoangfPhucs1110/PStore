@@ -1,166 +1,181 @@
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef } from "react";
 import AdminSidebar from "../../components/admin/AdminSidebar";
+import api from "../../api/api";
+import { useAuth } from "../../context/AuthContext";
 import io from "socket.io-client";
-import { FiSend, FiUser, FiMessageSquare } from "react-icons/fi";
-import api from "../../api/api"; // Để fetch thông tin user
+import { FiSend, FiUser, FiSearch, FiMessageSquare } from "react-icons/fi";
+import { getImageUrl } from "../../utils/constants";
 
-const ENDPOINT = "http://localhost:5000";
-
-// Khởi tạo Socket Client (Phải đặt ngoài Component để không khởi tạo lại)
-const socket = io(ENDPOINT, { autoConnect: false });
+const socket = io("http://localhost:5000");
 
 export default function AdminChat() {
-  const [conversations, setConversations] = useState([]); 
-  const [activeChat, setActiveChat] = useState(null); 
-  const [messages, setMessages] = useState([]); 
-  const [text, setText] = useState("");
-  const messagesEndRef = useRef(null);
-
-  // Hàm lấy thông tin user (tên, email) - Tạm thời dùng cache và gọi API
-  const fetchUserDetails = useCallback(async (userId) => {
-    try {
-        const res = await api.get(`/auth/profile/${userId}`); // Giả định API /auth/profile/:id có tồn tại
-        return { name: res.data.name, email: res.data.email };
-    } catch {
-        return { name: `Khách hàng ${userId.slice(-4)}`, email: "Không xác định" };
-    }
-  }, []);
+  const { user } = useAuth();
+  const [conversations, setConversations] = useState([]);
+  const [activeChat, setActiveChat] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState("");
   
-  // --- SOCKET.IO LOGIC ---
+  // SỬA: Ref cho container chat
+  const chatContainerRef = useRef(null);
+
   useEffect(() => {
-    socket.connect();
+    loadConversations();
     
-    // Admin lắng nghe tin nhắn mới
-    socket.on("new_unhandled_message", async (msg) => {
-        const details = await fetchUserDetails(msg.senderId);
-
-        setConversations(prev => {
-            const isExist = prev.some(c => c.senderId === msg.senderId);
-            const newConvo = { senderId: msg.senderId, name: details.name, email: details.email, lastMsg: msg.text, unread: true };
-            if (!isExist) {
-              return [newConvo, ...prev]; // Thêm mới lên đầu
-            }
-            return prev.map(c => c.senderId === msg.senderId ? newConvo : c); // Cập nhật tin nhắn cuối
-        });
-
-        // Nếu đang mở khung chat của user này, thêm tin nhắn vào
-        if (activeChat && activeChat.senderId === msg.senderId) {
-            setMessages(prev => [...prev, msg]);
+    socket.on("receive_message", (data) => {
+        if (activeChat && data.chatRoomId === activeChat._id) {
+            setMessages(prev => [...prev, data]);
+        } else {
+            loadConversations();
         }
     });
 
-    socket.on("receive_message", (msg) => {
-        if (activeChat && activeChat.senderId === msg.senderId) {
-            setMessages(prev => [...prev, msg]);
-        }
-    });
+    return () => socket.off("receive_message");
+  }, [activeChat]);
 
-    // Tạm thời mock danh sách hội thoại ban đầu
-    setConversations([
-        { senderId: 'user_1234', name: 'Hoang Phuc', email: 'user@example.com', lastMsg: 'Xin chào, sản phẩm còn không ạ?' }
-    ]);
-    
-    return () => {
-      socket.off("new_unhandled_message");
-      socket.off("receive_message");
-      socket.disconnect(); // Tắt kết nối khi component unmount
-    };
-  }, [activeChat, fetchUserDetails]);
-
-
-  // Hàm chọn user để chat
-  const selectUser = async (convo) => {
-    if (activeChat && activeChat.senderId === convo.senderId) return;
-    
-    // Tạm thời: Mock lịch sử chat
-    setMessages([
-        { senderId: 'admin', receiverId: convo.senderId, text: 'Xin chào, PStore có thể giúp gì cho bạn?', isAdminMsg: true, timestamp: Date.now() },
-        { senderId: convo.senderId, receiverId: 'admin', text: convo.lastMsg, isAdminMsg: false, timestamp: Date.now() },
-    ]);
-
-    setActiveChat(convo);
-    
-    // Gửi tín hiệu join room (Admin cần join room của user để gửi lại)
-    socket.emit("join_room", convo.senderId); 
+  const loadConversations = () => {
+    api.get("/chat/admin/conversations")
+      .then(res => setConversations(res.data))
+      .catch(console.error);
   };
 
-  const handleReply = (e) => {
+  const selectChat = (convUser) => {
+    if (!convUser || !convUser._id) return;
+    setActiveChat(convUser);
+    socket.emit("join_room", convUser._id);
+    api.get(`/chat/${convUser._id}`).then(res => setMessages(res.data));
+  };
+
+  const handleSend = async (e) => {
     e.preventDefault();
-    if (!text.trim() || !activeChat) return;
+    if (!input.trim() || !activeChat) return;
 
     const msgData = {
-        senderId: "admin", 
-        receiverId: activeChat.senderId,
-        text: text,
-        isAdminMsg: true,
-        timestamp: new Date().toISOString()
+        chatRoomId: activeChat._id,
+        sender: user,
+        message: input,
+        createdAt: new Date().toISOString()
     };
 
     socket.emit("send_message", msgData);
-    setMessages(prev => [...prev, msgData]);
-    setText("");
+
+    try {
+        await api.post("/chat", { message: input, chatRoomId: activeChat._id });
+        setMessages(prev => [...prev, msgData]);
+        setInput("");
+    } catch (err) { console.error(err); }
   };
+
+  // SỬA: Logic cuộn trang bằng scrollTo
+  useEffect(() => {
+    if (chatContainerRef.current) {
+        const { scrollHeight, clientHeight } = chatContainerRef.current;
+        chatContainerRef.current.scrollTo({
+            top: scrollHeight - clientHeight,
+            behavior: "smooth"
+        });
+    }
+  }, [messages]);
 
   return (
     <div className="d-flex bg-light min-vh-100">
       <AdminSidebar />
-      <div className="flex-grow-1 d-flex">
+      <div className="flex-grow-1 p-4 h-100 d-flex flex-column" style={{maxHeight: "100vh"}}>
+        <h4 className="fw-bold mb-3">Hỗ trợ trực tuyến</h4>
         
-        {/* --- 1. Conversation List (Sidebar) --- */}
-        <div className="bg-white border-end d-flex flex-column" style={{width: 300}}>
-            <div className="p-3 border-bottom fw-bold text-primary">Hội thoại Khách hàng</div>
-            <div className="flex-grow-1 overflow-auto">
-                {conversations.map(c => (
-                    <div 
-                        key={c.senderId} 
-                        className={`p-3 border-bottom cursor-pointer ${activeChat?.senderId === c.senderId ? 'bg-primary-subtle' : 'hover-bg-light'}`}
-                        onClick={() => selectUser(c)}
-                    >
-                        <div className="fw-bold text-dark">{c.name}</div>
-                        <div className="small text-muted text-truncate">{c.email}</div>
-                        <div className="small mt-1 fst-italic text-secondary">{c.lastMsg}</div>
+        <div className="card border-0 shadow-sm flex-grow-1 overflow-hidden d-flex flex-row">
+            
+            {/* LIST KHÁCH HÀNG (Bên trái) */}
+            <div className="border-end bg-white d-flex flex-column" style={{width: 320}}>
+                <div className="p-3 border-bottom">
+                    <div className="input-group">
+                        <span className="input-group-text bg-light border-0"><FiSearch/></span>
+                        <input className="form-control bg-light border-0" placeholder="Tìm kiếm..." />
                     </div>
-                ))}
-            </div>
-        </div>
-
-        {/* --- 2. Chat Window (Right Panel) --- */}
-        {/* Layout fix: Đặt chiều cao max-height và input cố định */}
-        <div className="flex-grow-1 d-flex flex-column bg-white" style={{maxHeight: '100vh'}}>
-            {activeChat ? (
-                <>
-                    {/* Header Chat Window */}
-                    <div className="p-3 border-bottom bg-light fw-bold shadow-sm d-flex justify-content-between align-items-center flex-shrink-0">
-                        <span className="fw-bold">Chat với {activeChat.name}</span>
-                        <span className="small text-muted">{activeChat.email}</span>
-                    </div>
-
-                    {/* Body: Message Area (Scrollable) */}
-                    <div className="flex-grow-1 p-4 overflow-auto d-flex flex-column gap-3 bg-white" style={{ height: '100%' }}>
-                        {messages.map((msg, idx) => (
-                            <div key={idx} className={`d-flex ${msg.isAdminMsg ? 'justify-content-end' : 'justify-content-start'}`}>
-                                <div className={`p-3 rounded-3 shadow-sm ${msg.isAdminMsg ? 'bg-primary text-white' : 'bg-light text-dark border'}`} style={{maxWidth: '70%'}}>
-                                    {msg.text}
+                </div>
+                <div className="overflow-auto flex-grow-1">
+                    {conversations.filter(c => c._id).map(conv => (
+                        <div 
+                            key={conv._id._id} 
+                            className={`p-3 border-bottom cursor-pointer hover-bg-light ${activeChat?._id === conv._id._id ? "bg-primary-subtle" : ""}`}
+                            onClick={() => selectChat(conv._id)}
+                        >
+                            <div className="d-flex align-items-center gap-2">
+                                <img 
+                                    src={getImageUrl(conv._id.avatarUrl)} 
+                                    className="rounded-circle border" width="40" height="40" style={{objectFit:"cover"}} 
+                                    alt="" onError={(e)=>e.target.src="https://via.placeholder.com/40"}
+                                />
+                                <div className="overflow-hidden">
+                                    <div className="fw-bold text-truncate">{conv._id.name || "Khách hàng"}</div>
+                                    <div className="small text-muted text-truncate">{conv.lastMessage}</div>
                                 </div>
                             </div>
-                        ))}
-                        <div ref={messagesEndRef} />
-                    </div>
-
-                    {/* Footer: Input (Fixed at bottom) */}
-                    <div className="p-3 border-top bg-white flex-shrink-0">
-                        <form onSubmit={handleReply} className="d-flex gap-2">
-                            <input className="form-control" placeholder="Nhập tin nhắn trả lời..." value={text} onChange={e => setText(e.target.value)} />
-                            <button className="btn btn-primary px-4"><FiSend/></button>
-                        </form>
-                    </div>
-                </>
-            ) : (
-                <div className="d-flex align-items-center justify-content-center h-100 text-muted w-100">
-                    <FiMessageSquare size={50} className="text-secondary opacity-25 me-3"/>
-                    Chọn một hội thoại để bắt đầu hỗ trợ khách hàng
+                        </div>
+                    ))}
+                    {conversations.filter(c => c._id).length === 0 && (
+                        <div className="text-center p-3 text-muted small">Chưa có tin nhắn nào.</div>
+                    )}
                 </div>
-            )}
+            </div>
+
+            {/* KHUNG CHAT (Bên phải) */}
+            <div className="flex-grow-1 d-flex flex-column bg-light">
+                {activeChat ? (
+                    <>
+                        <div className="p-3 bg-white border-bottom d-flex align-items-center gap-3">
+                            <img 
+                                src={getImageUrl(activeChat.avatarUrl)} 
+                                className="rounded-circle border" width="40" height="40" style={{objectFit:"cover"}} 
+                                alt="" onError={(e)=>e.target.src="https://via.placeholder.com/40"}
+                            />
+                            <div>
+                                <div className="fw-bold">{activeChat.name}</div>
+                                <div className="small text-muted">{activeChat.email}</div>
+                            </div>
+                        </div>
+
+                        {/* SỬA: Gắn ref vào đây */}
+                        <div 
+                            ref={chatContainerRef}
+                            className="flex-grow-1 p-4 overflow-auto"
+                        >
+                            {messages.map((msg, i) => {
+                                const isMe = msg.sender?._id === user._id || msg.sender === user._id;
+                                return (
+                                    <div key={i} className={`d-flex mb-3 ${isMe ? "justify-content-end" : "justify-content-start"}`}>
+                                        {!isMe && (
+                                            <div className="me-2">
+                                                <img src={getImageUrl(activeChat.avatarUrl)} className="rounded-circle" width="30" height="30" alt=""/>
+                                            </div>
+                                        )}
+                                        <div className={`p-3 rounded-4 shadow-sm ${isMe ? "bg-primary text-white" : "bg-white text-dark"}`} style={{maxWidth: "70%"}}>
+                                            {msg.message}
+                                        </div>
+                                    </div>
+                                )
+                            })}
+                        </div>
+
+                        <form onSubmit={handleSend} className="p-3 bg-white border-top d-flex gap-2">
+                            <input 
+                                className="form-control border-0 bg-light rounded-pill px-3 py-2" 
+                                placeholder="Nhập tin nhắn trả lời..."
+                                value={input}
+                                onChange={e => setInput(e.target.value)}
+                                autoFocus
+                            />
+                            <button className="btn btn-primary rounded-circle p-3 d-flex align-items-center justify-content-center">
+                                <FiSend size={20}/>
+                            </button>
+                        </form>
+                    </>
+                ) : (
+                    <div className="h-100 d-flex flex-column align-items-center justify-content-center text-muted">
+                        <FiMessageSquare size={60} className="mb-3 opacity-25"/>
+                        <h5>Chọn một cuộc hội thoại để bắt đầu</h5>
+                    </div>
+                )}
+            </div>
         </div>
       </div>
     </div>

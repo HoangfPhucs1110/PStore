@@ -30,7 +30,6 @@ export default function Login() {
     <div className="container-fluid min-vh-100 bg-white">
       <div className="row min-vh-100">
         
-        {/* Cột Trái: Form Đăng Nhập */}
         <div className="col-md-6 col-lg-5 d-flex align-items-center justify-content-center p-5">
           <div style={{ width: "100%", maxWidth: 400 }}>
             <Link to="/" className="text-decoration-none text-muted mb-4 d-inline-flex align-items-center gap-2 hover-text-primary">
@@ -61,7 +60,8 @@ export default function Login() {
               <div className="mb-4">
                 <div className="d-flex justify-content-between align-items-center mb-1">
                   <label className="form-label small fw-bold m-0">Mật khẩu</label>
-                  <Link to="#" className="small text-decoration-none text-primary">Quên mật khẩu?</Link>
+                  {/* --- SỬA LINK QUÊN MẬT KHẨU TẠI ĐÂY --- */}
+                  <Link to="/forgot-password" className="small text-decoration-none text-primary">Quên mật khẩu?</Link>
                 </div>
                 <div className="input-group">
                   <span className="input-group-text bg-light border-end-0 text-muted"><FiLock /></span>
@@ -82,12 +82,12 @@ export default function Login() {
             </form>
 
             <div className="text-center mt-4 text-muted small">
-              Chưa có tài khoản? <Link to="/register" className="fw-bold text-primary text-decoration-none">Đăng ký miễn phí</Link>
+              Chưa có tài khoản?
+              <Link to="/register" className="fw-bold text-primary text-decoration-none ms-1">Đăng ký miễn phí</Link>
             </div>
           </div>
         </div>
 
-        {/* Cột Phải: Banner Ảnh (Ẩn trên mobile) */}
         <div className="col-md-6 col-lg-7 d-none d-md-block p-0 position-relative bg-light">
           <img 
             src="https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=2070&auto=format&fit=crop" 
@@ -95,7 +95,6 @@ export default function Login() {
             className="w-100 h-100 object-fit-cover"
           />
           <div className="position-absolute top-0 start-0 w-100 h-100" style={{background: "linear-gradient(to right, rgba(255,255,255,1) 0%, rgba(255,255,255,0) 20%)"}}></div>
-          
           <div className="position-absolute bottom-0 start-0 p-5 text-white" style={{background: "linear-gradient(to top, rgba(0,0,0,0.8), transparent)"}}>
             <h3 className="fw-bold">PStore Gaming Gear</h3>
             <p className="mb-0 opacity-75">Nơi cung cấp thiết bị công nghệ chính hãng hàng đầu Việt Nam.</p>

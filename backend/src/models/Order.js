@@ -25,13 +25,14 @@ const orderSchema = new mongoose.Schema(
   {
     userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     items: [orderItemSchema],
-
-    // tiền hàng + phí ship + giảm giá + tổng
     itemsPrice: Number,
     shippingPrice: Number,
     discount: { type: Number, default: 0 },
     total: Number,
-    code: String,
+    totalProfit: { type: Number, default: 0 }, // <--- TỔNG LỢI NHUẬN (MỚI)
+    
+    code: String, 
+    orderCode: Number, 
 
     status: {
       type: String,
@@ -40,7 +41,7 @@ const orderSchema = new mongoose.Schema(
     },
     paymentMethod: {
       type: String,
-      enum: ["COD", "VNPAY", "MOMO", "BANK"],
+      enum: ["COD", "PAYOS", "BANK"],
       default: "COD"
     },
     paymentStatus: {
@@ -53,5 +54,4 @@ const orderSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-module.exports =
-  mongoose.models.Order || mongoose.model("Order", orderSchema);
+module.exports = mongoose.models.Order || mongoose.model("Order", orderSchema);

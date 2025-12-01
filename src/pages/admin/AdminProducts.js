@@ -1,23 +1,11 @@
 import { useEffect, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { productService } from "../../services/productService";
+import { categoryService } from "../../services/categoryService"; // <--- Import Service Danh mục
 import AdminSidebar from "../../components/admin/AdminSidebar";
 import { FiEdit, FiTrash2, FiPlus, FiStar, FiSearch, FiFilter, FiRefreshCw } from "react-icons/fi";
 import { getImageUrl } from "../../utils/constants";
 import { useNotification } from "../../context/NotificationContext";
-
-// Danh sách danh mục để lọc
-const CATEGORIES = [
-  { value: "all", label: "Tất cả danh mục" },
-  { value: "laptop", label: "Laptop" },
-  { value: "man-hinh", label: "Màn hình" },
-  { value: "ban-phim", label: "Bàn phím" },
-  { value: "chuot", label: "Chuột" },
-  { value: "tai-nghe", label: "Tai nghe" },
-  { value: "ghe-gaming", label: "Ghế Gaming" },
-  { value: "tay-cam", label: "Tay cầm" },
-  { value: "loa", label: "Loa" }
-];
 
 export default function AdminProducts() {
   const [products, setProducts] = useState([]);
@@ -27,9 +15,20 @@ export default function AdminProducts() {
   // State bộ lọc
   const [keyword, setKeyword] = useState("");
   const [category, setCategory] = useState("all");
+  const [categories, setCategories] = useState([]); // <--- State chứa danh mục động
   const [pagination, setPagination] = useState({ page: 1, total: 0, pages: 1 });
 
-  // Hàm load dữ liệu
+  // 1. Load danh mục động khi vào trang
+  useEffect(() => {
+    categoryService.getAll()
+      .then(data => {
+        // Thêm option "Tất cả" vào đầu danh sách
+        setCategories([{ name: "Tất cả danh mục", slug: "all" }, ...data]);
+      })
+      .catch(console.error);
+  }, []);
+
+  // 2. Hàm load dữ liệu sản phẩm
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -41,6 +40,7 @@ export default function AdminProducts() {
       };
       
       const res = await productService.getAll(params);
+      
       setProducts(res.products);
       setPagination(prev => ({ ...prev, total: res.total, pages: res.pages }));
     } catch (error) {
@@ -71,7 +71,6 @@ export default function AdminProducts() {
   const toggleFeatured = async (product) => {
     try {
       await productService.update(product._id, { isFeatured: !product.isFeatured });
-      // Cập nhật state local ngay lập tức để giao diện phản hồi nhanh
       setProducts(prev => prev.map(p => p._id === product._id ? { ...p, isFeatured: !product.isFeatured } : p));
       notify(`Đã ${!product.isFeatured ? "bật" : "tắt"} nổi bật`, "success");
     } catch (err) {
@@ -119,6 +118,8 @@ export default function AdminProducts() {
                 <div className="col-md-3">
                     <div className="input-group">
                         <span className="input-group-text bg-white"><FiFilter className="text-muted"/></span>
+                        
+                        {/* SELECT DANH MỤC ĐỘNG */}
                         <select 
                             className="form-select" 
                             value={category} 
@@ -127,8 +128,11 @@ export default function AdminProducts() {
                                 setPagination(prev => ({ ...prev, page: 1 }));
                             }}
                         >
-                            {CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                            {categories.map(c => (
+                                <option key={c.slug} value={c.slug}>{c.name}</option>
+                            ))}
                         </select>
+
                     </div>
                 </div>
                 <div className="col-md-3">
@@ -162,7 +166,6 @@ export default function AdminProducts() {
                 ) : products.length === 0 ? (
                   <tr><td colSpan="6" className="text-center py-5 text-muted">Không tìm thấy sản phẩm nào.</td></tr>
                 ) : products.map(p => {
-                  // Tính % giảm giá để hiển thị badge
                   const discount = p.oldPrice > p.price 
                     ? Math.round(((p.oldPrice - p.price) / p.oldPrice) * 100) 
                     : 0;
@@ -171,7 +174,6 @@ export default function AdminProducts() {
                     <tr key={p._id}>
                       <td className="ps-4">
                         <div className="d-flex align-items-center gap-3">
-                          {/* Xử lý ảnh với hàm getImageUrl + onError */}
                           <div className="position-relative">
                             <img 
                               src={getImageUrl(p.thumbnail || p.images?.[0])} 
@@ -180,8 +182,8 @@ export default function AdminProducts() {
                               style={{objectFit: "contain"}} 
                               alt=""
                               onError={(e) => {
-                                e.target.onerror = null; 
-                                e.target.src = "https://via.placeholder.com/48?text=Err";
+                                e.target.onerror = null;
+                                e.target.src = "https://placehold.co/48?text=Err";
                               }}
                             />
                             {discount > 0 && (
@@ -233,7 +235,7 @@ export default function AdminProducts() {
           {/* Phân trang */}
           {pagination.pages > 1 && (
             <div className="card-footer bg-white d-flex justify-content-end py-3">
-                <nav>
+              <nav>
                     <ul className="pagination pagination-sm mb-0">
                         <li className={`page-item ${pagination.page === 1 ? 'disabled' : ''}`}>
                             <button className="page-link" onClick={() => setPagination(p => ({...p, page: p.page - 1}))}>&laquo;</button>
@@ -249,7 +251,7 @@ export default function AdminProducts() {
                             <button className="page-link" onClick={() => setPagination(p => ({...p, page: p.page + 1}))}>&raquo;</button>
                         </li>
                     </ul>
-                </nav>
+              </nav>
             </div>
           )}
         </div>

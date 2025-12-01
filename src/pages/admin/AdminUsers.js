@@ -1,18 +1,19 @@
 import { useEffect, useState } from "react";
 import { userService } from "../../services/userService";
-import { authService } from "../../services/authService"; // Để dùng hàm register tạo user
+import { authService } from "../../services/authService";
 import AdminSidebar from "../../components/admin/AdminSidebar";
 import { getImageUrl } from "../../utils/constants";
 import { FiTrash2, FiRefreshCw, FiPlus } from "react-icons/fi";
 import { useNotification } from "../../context/NotificationContext";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
+import { useAuth } from "../../context/AuthContext"; // Import thêm hook lấy user hiện tại
 
 export default function AdminUsers() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const { confirm, notify } = useNotification();
+  const { user: currentUser } = useAuth(); // Lấy thông tin admin đang đăng nhập
   
-  // State cho Modal thêm user
   const [showModal, setShowModal] = useState(false);
   const [newUser, setNewUser] = useState({ name: "", email: "", password: "", role: "user" });
 
@@ -25,8 +26,13 @@ export default function AdminUsers() {
 
   useEffect(() => { load(); }, []);
 
-  // Cập nhật quyền (Admin/User/Staff)
   const handleRoleChange = async (id, newRole) => {
+    // Ngăn không cho tự hạ cấp chính mình (để tránh mất quyền admin ngay lập tức)
+    if (id === currentUser._id && newRole !== 'admin') {
+        notify("Bạn không thể tự hạ cấp quyền Admin của chính mình!", "warning");
+        return;
+    }
+
     try {
         await userService.updateStatus(id, { role: newRole });
         setUsers(prev => prev.map(u => u._id === id ? { ...u, role: newRole } : u));
@@ -37,6 +43,10 @@ export default function AdminUsers() {
   };
 
   const handleDelete = (id) => {
+    if (id === currentUser._id) {
+        notify("Bạn không thể tự xóa tài khoản của mình!", "warning");
+        return;
+    }
     confirm("Xóa người dùng này?", async () => {
         try {
             await userService.delete(id);
@@ -49,10 +59,8 @@ export default function AdminUsers() {
   const handleCreateUser = async (e) => {
     e.preventDefault();
     try {
-        // Tận dụng API register, sau đó update role ngay lập tức
-        const res = await authService.register(newUser); // API register trả về { token, user }
+        const res = await authService.register(newUser);
         if (res && res.user) {
-            // Nếu role không phải user thường, cần update thêm lần nữa
             if (newUser.role !== 'user') {
                 await userService.updateStatus(res.user._id, { role: newUser.role });
             }
@@ -95,17 +103,17 @@ export default function AdminUsers() {
                   <td className="ps-4">
                     <div className="d-flex align-items-center gap-3">
                         <img src={getImageUrl(u.avatarUrl)} className="rounded-circle border" width="36" height="36" style={{objectFit: "cover"}} alt="" onError={(e) => e.target.src = "https://cdn-icons-png.flaticon.com/512/149/149071.png"} />
-                        <span className="fw-medium">{u.name}</span>
+                        <span className="fw-medium">{u.name} {u._id === currentUser._id && <span className="badge bg-primary ms-1">Bạn</span>}</span>
                     </div>
                   </td>
                   <td className="text-muted">{u.email}</td>
                   <td>
+                    {/* --- ĐÃ SỬA: BỎ DISABLED ĐỂ CHO PHÉP CHỈNH SỬA ADMIN --- */}
                     <select 
                         className={`form-select form-select-sm border-0 fw-bold ${u.role === 'admin' ? 'text-danger' : u.role === 'staff' ? 'text-primary' : 'text-dark'}`}
-                        style={{width: 120, cursor: 'pointer'}}
+                        style={{width: 130, cursor: 'pointer'}}
                         value={u.role}
                         onChange={(e) => handleRoleChange(u._id, e.target.value)}
-                        disabled={u.role === 'admin'} // Không sửa được admin khác
                     >
                         <option value="user">Khách hàng</option>
                         <option value="staff">Nhân viên</option>
@@ -116,7 +124,7 @@ export default function AdminUsers() {
                     <span className={`badge ${u.isActive ? 'bg-success' : 'bg-danger'}`}>{u.isActive ? 'Active' : 'Locked'}</span>
                   </td>
                   <td className="text-end pe-4">
-                    <button className="btn btn-light text-danger btn-sm" onClick={() => handleDelete(u._id)} disabled={u.role === 'admin'}>
+                    <button className="btn btn-light text-danger btn-sm" onClick={() => handleDelete(u._id)}>
                         <FiTrash2 />
                     </button>
                   </td>
@@ -127,7 +135,6 @@ export default function AdminUsers() {
         </div>
       </div>
 
-      {/* MODAL THÊM USER */}
       {showModal && (
         <div className="modal d-block" style={{backgroundColor: "rgba(0,0,0,0.5)"}}>
             <div className="modal-dialog modal-dialog-centered">

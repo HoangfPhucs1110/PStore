@@ -2,7 +2,7 @@ export const API_URL = "http://localhost:5000";
 
 export const getImageUrl = (imagePath) => {
   if (!imagePath || imagePath === "undefined" || imagePath === "null") {
-      return "https://via.placeholder.com/150?text=No+Image";
+      return "https://placehold.co/150x150?text=No+Image";
   }
 
   if (typeof imagePath === 'object') {

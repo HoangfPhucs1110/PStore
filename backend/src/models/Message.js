@@ -2,11 +2,31 @@ const mongoose = require("mongoose");
 
 const messageSchema = new mongoose.Schema(
   {
-    senderId: { type: String, required: true }, 
-    receiverId: { type: String, required: true }, 
-    text: { type: String, required: true },
-    isAdminMsg: { type: Boolean, default: false }, 
-    readByAdmin: { type: Boolean, default: false }, // Cho admin/staff biết tin nhắn đã đọc chưa
+    chatRoomId: {
+      type: String,
+      required: true,
+    },
+    sender: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    message: {
+      type: String,
+    },
+    fileUrl: {
+      type: String,
+      default: "",
+    },
+    fileType: {
+      type: String,
+      default: "text", // 'text', 'image', 'file'
+      enum: ["text", "image", "file"],
+    },
+    isRead: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );

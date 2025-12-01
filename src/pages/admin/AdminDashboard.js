@@ -5,30 +5,48 @@ import { productService } from "../../services/productService";
 import { userService } from "../../services/userService";
 import AdminSidebar from "../../components/admin/AdminSidebar";
 import { FiShoppingBag, FiUsers, FiPackage, FiDollarSign } from "react-icons/fi";
+// Import Recharts
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Legend } from 'recharts';
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState({ orders: 0, products: 0, users: 0, revenue: 0 });
   const [recentOrders, setRecentOrders] = useState([]);
+  const [chartData, setChartData] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const loadData = async () => {
       try {
-        // Gọi từng cái để tránh lỗi 1 cái làm chết cả đám
         const ordersData = await orderService.getAll().catch(() => []);
         const productsData = await productService.getAll({ limit: 1 }).catch(() => ({ total: 0 }));
         const usersData = await userService.getAll().catch(() => []);
 
-        const revenue = ordersData
-            .filter(o => o.status === 'completed')
-            .reduce((s, o) => s + (o.total || 0), 0);
+        // Tính tổng lợi nhuận toàn thời gian
+        const profit = ordersData
+          .filter(o => o.status === 'completed')
+          .reduce((s, o) => s + (o.totalProfit || 0), 0);
           
         setStats({
             orders: ordersData.length,
             products: productsData.total || 0,
             users: usersData.length,
-            revenue
+            revenue: profit
         });
+
+        // --- Xử lý dữ liệu biểu đồ (7 ngày gần nhất) ---
+        const dailyData = {};
+        ordersData.forEach(order => {
+            if (order.status === 'completed') {
+                const date = new Date(order.createdAt).toLocaleDateString('vi-VN', {day: '2-digit', month: '2-digit'});
+                if (!dailyData[date]) dailyData[date] = { date, DoanhThu: 0, LoiNhuan: 0 };
+                dailyData[date].DoanhThu += order.total;
+                dailyData[date].LoiNhuan += (order.totalProfit || 0);
+            }
+        });
+        
+        // Sắp xếp theo thời gian và lấy 7 ngày
+        const chartArray = Object.values(dailyData).reverse().slice(0, 7).reverse();
+        setChartData(chartArray);
 
         setRecentOrders(ordersData.slice(0, 5));
       } catch (err) {
@@ -63,15 +81,51 @@ export default function AdminDashboard() {
       <div className="flex-grow-1 p-4">
         <h4 className="fw-bold mb-4 text-dark">Tổng quan hệ thống</h4>
         
-        {/* Thống kê */}
         <div className="row g-3 mb-4">
           <StatCard title="Đơn hàng" value={stats.orders} color="primary" icon={<FiShoppingBag/>} />
-          <StatCard title="Doanh thu" value={stats.revenue.toLocaleString() + 'đ'} color="success" icon={<FiDollarSign/>} />
+          <StatCard title="Lợi nhuận ròng" value={stats.revenue.toLocaleString() + 'đ'} color="success" icon={<FiDollarSign/>} />
           <StatCard title="Sản phẩm" value={stats.products} color="warning" icon={<FiPackage/>} />
           <StatCard title="Người dùng" value={stats.users} color="info" icon={<FiUsers/>} />
         </div>
 
-        {/* Đơn hàng mới */}
+        {/* --- BIỂU ĐỒ --- */}
+        <div className="row mb-4">
+            <div className="col-md-7">
+                <div className="card border-0 shadow-sm p-4 h-100">
+                    <h6 className="fw-bold mb-3 text-secondary">Biểu đồ Lợi nhuận & Doanh thu</h6>
+                    <div style={{ width: '100%', height: 300 }}>
+                        <ResponsiveContainer>
+                            <BarChart data={chartData}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                <XAxis dataKey="date" />
+                                <YAxis />
+                                <Tooltip formatter={(value) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value)}/>
+                                <Legend />
+                                <Bar dataKey="DoanhThu" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                                <Bar dataKey="LoiNhuan" fill="#10b981" radius={[4, 4, 0, 0]} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+            </div>
+            <div className="col-md-5">
+                 <div className="card border-0 shadow-sm p-4 h-100">
+                    <h6 className="fw-bold mb-3 text-secondary">Xu hướng Lợi nhuận</h6>
+                    <div style={{ width: '100%', height: 300 }}>
+                        <ResponsiveContainer>
+                            <LineChart data={chartData}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                <XAxis dataKey="date" />
+                                <YAxis />
+                                <Tooltip formatter={(value) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value)}/>
+                                <Line type="monotone" dataKey="LoiNhuan" stroke="#10b981" strokeWidth={3} dot={{r: 4}} />
+                            </LineChart>
+                        </ResponsiveContainer>
+                    </div>
+                 </div>
+            </div>
+        </div>
+
         <div className="card border-0 shadow-sm">
           <div className="card-header bg-white py-3 border-0 d-flex justify-content-between align-items-center">
             <h6 className="fw-bold m-0 text-primary">Đơn hàng mới nhất</h6>

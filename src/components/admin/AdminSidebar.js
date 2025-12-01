@@ -1,24 +1,25 @@
 import { Link, useLocation } from "react-router-dom";
-import { FiHome, FiPackage, FiShoppingBag, FiUsers, FiStar, FiLogOut, FiMessageSquare, FiArrowLeft, FiMail } from "react-icons/fi";
+import { FiHome, FiPackage, FiShoppingBag, FiUsers, FiStar, FiLogOut, FiArrowLeft, FiMail, FiList, FiTag, FiMessageSquare } from "react-icons/fi";
 import { useAuth } from "../../context/AuthContext";
 
 export default function AdminSidebar() {
   const location = useLocation();
   const { user, logout } = useAuth();
 
-  // Menu cơ bản
   let menu = [
     { path: "/admin", label: "Dashboard", icon: <FiHome /> },
-    { path: "/admin/chat", label: "Hỗ trợ khách hàng", icon: <FiMessageSquare /> }, // Ai cũng thấy
+    { path: "/admin/categories", label: "Danh mục", icon: <FiList /> },
     { path: "/admin/products", label: "Sản phẩm", icon: <FiPackage /> },
     { path: "/admin/orders", label: "Đơn hàng", icon: <FiShoppingBag /> },
+    { path: "/admin/coupons", label: "Mã giảm giá", icon: <FiTag /> },
     { path: "/admin/reviews", label: "Đánh giá", icon: <FiStar /> },
+    { path: "/admin/contacts", label: "Liên hệ KH", icon: <FiMessageSquare /> }, 
   ];
 
-  // Chỉ Admin mới thấy quản lý User và Email
   if (user?.role === "admin") {
     menu.push(
         { path: "/admin/users", label: "Người dùng", icon: <FiUsers /> },
+        { path: "/admin/chat", label: "Chat hỗ trợ", icon: <FiMessageSquare /> },
         { path: "/admin/subscribers", label: "Email Marketing", icon: <FiMail /> }
     );
   }

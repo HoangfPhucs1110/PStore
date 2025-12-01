@@ -2,21 +2,22 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useCart } from "../../context/CartContext";
-import { FiShoppingCart, FiSearch, FiLogOut, FiHeart, FiX } from "react-icons/fi";
+import { FiShoppingCart, FiSearch, FiHeart, FiX, FiTruck } from "react-icons/fi";
 import { productService } from "../../services/productService";
 import { getImageUrl } from "../../utils/constants";
 import ConfirmDialog from "./ConfirmDialog";
 
 export default function Header() {
   const { user, logout } = useAuth();
-  const { cart, totalItem, totalPrice, removeFromCart } = useCart();
+  // --- SỬA TẠI ĐÂY: Thêm totalPrice vào destructuring ---
+  const { cart, totalItem, totalPrice, removeFromCart } = useCart(); 
   
   const [keyword, setKeyword] = useState("");
   const [suggests, setSuggests] = useState([]);
   const [showSuggest, setShowSuggest] = useState(false);
   const [showMiniCart, setShowMiniCart] = useState(false); 
   const [openUser, setOpenUser] = useState(false);
-  const [deleteId, setDeleteId] = useState(null); // State xóa mini cart
+  const [deleteId, setDeleteId] = useState(null);
   
   const navigate = useNavigate();
   const searchRef = useRef(null);
@@ -76,6 +77,7 @@ export default function Header() {
           <span className="fw-bold fs-4 text-dark">PStore</span>
         </Link>
 
+        {/* SEARCH BAR */}
         <div className="flex-grow-1 position-relative mx-lg-5" ref={searchRef}>
           <form onSubmit={handleSearchSubmit} className="input-group">
             <input 
@@ -90,13 +92,26 @@ export default function Header() {
               <FiSearch size={20} className="text-muted" />
             </button>
           </form>
+          
+          {/* SEARCH SUGGESTIONS */}
           {showSuggest && suggests.length > 0 && (
             <div className="position-absolute w-100 bg-white shadow-lg rounded-3 mt-2 overflow-hidden border" style={{top: "100%", zIndex: 2050}}>
               {suggests.map(p => (
-                <Link key={p._id} to={`/products/${p.slug}`} onClick={()=>setShowSuggest(false)} className="d-flex gap-3 p-2 hover-bg-light border-bottom text-decoration-none">
-                  <img src={getImageUrl(p.thumbnail)} width="50" height="50" className="object-fit-contain rounded border bg-white" alt=""/>
+                <Link 
+                    key={p._id} 
+                    to={`/products/${p.slug}`} 
+                    onClick={()=>setShowSuggest(false)} 
+                    className="d-flex gap-3 p-2 hover-bg-light border-bottom text-decoration-none align-items-center"
+                >
+                  <img 
+                    src={getImageUrl(p.thumbnail || p.images?.[0])} 
+                    width="50" height="50" 
+                    className="object-fit-contain rounded border bg-white flex-shrink-0" 
+                    alt={p.name}
+                    onError={(e) => e.target.src = "https://placehold.co/50?text=IMG"}
+                  />
                   <div>
-                    <div className="text-dark small fw-medium">{p.name}</div>
+                    <div className="text-dark small fw-medium text-truncate-2">{p.name}</div>
                     <div className="text-danger small fw-bold">{p.price.toLocaleString()}đ</div>
                   </div>
                 </Link>
@@ -106,14 +121,23 @@ export default function Header() {
         </div>
 
         <div className="d-flex align-items-center gap-3">
-          <Link to="/wishlist" className="btn btn-light rounded-circle p-2 text-danger position-relative">
+          
+          <Link 
+            to="/order-lookup" 
+            className="btn btn-light rounded-circle p-2 text-secondary position-relative hover-icon" 
+            title="Tra cứu đơn hàng"
+          >
+            <FiTruck size={22} />
+          </Link>
+
+          <Link to="/wishlist" className="btn btn-light rounded-circle p-2 text-danger position-relative hover-icon">
             <FiHeart size={22} />
           </Link>
 
           {/* MINI CART */}
           <div className="position-relative" ref={cartRef}>
             <button 
-                className="btn btn-light rounded-circle position-relative p-2 border-0" 
+                className="btn btn-light rounded-circle position-relative p-2 border-0 hover-icon" 
                 id="cart-icon-target"
                 onClick={toggleCart} 
             >
@@ -143,7 +167,13 @@ export default function Header() {
                         ) : (
                             cart.map(item => (
                                 <div key={item.productId} className="d-flex gap-3 p-3 border-bottom hover-bg-light position-relative">
-                                    <img src={getImageUrl(item.image)} width="60" height="60" className="rounded border object-fit-contain bg-white" alt=""/>
+                                    <img 
+                                        src={getImageUrl(item.image)} 
+                                        width="60" height="60" 
+                                        className="rounded border object-fit-contain bg-white" 
+                                        alt=""
+                                        onError={(e) => e.target.src = "https://placehold.co/60?text=IMG"}
+                                    />
                                     <div className="flex-grow-1 pe-4">
                                         <div className="text-truncate-2 small fw-medium text-dark mb-1" style={{lineHeight: '1.4'}}>{item.name}</div>
                                         <div className="d-flex justify-content-between align-items-center">
@@ -153,9 +183,9 @@ export default function Header() {
                                     </div>
                                     <button 
                                         onClick={(e) => { 
-                                            e.stopPropagation(); 
-                                            setDeleteId(item.productId); // Gọi popup xóa
-                                            setShowMiniCart(false); // Đóng mini cart để hiện popup
+                                            e.stopPropagation();
+                                            setDeleteId(item.productId);
+                                            setShowMiniCart(false);
                                         }} 
                                         className="btn btn-sm text-danger position-absolute top-0 end-0 mt-2 me-2 p-1"
                                     >
@@ -186,7 +216,14 @@ export default function Header() {
           {user ? (
             <div className="dropdown" ref={userRef}>
               <button className="btn p-0 border-0 d-flex align-items-center gap-2" onClick={() => setOpenUser(!openUser)}>
-                <img src={getImageUrl(user.avatarUrl)} className="rounded-circle border" width="40" height="40" style={{objectFit: "cover"}} onError={(e) => e.target.src = "https://via.placeholder.com/40?text=U"} alt="" />
+                <img 
+                    src={getImageUrl(user.avatarUrl)} 
+                    className="rounded-circle border" 
+                    width="40" height="40" 
+                    style={{objectFit: "cover"}} 
+                    alt="" 
+                    onError={(e) => e.target.src = "https://placehold.co/40?text=U"}
+                />
               </button>
               {openUser && (
                 <div className="dropdown-menu dropdown-menu-end show shadow-lg border-0 rounded-3 mt-2 p-2" style={{minWidth: 200, zIndex: 2050, position: 'absolute', right: 0, top: '100%'}}>
@@ -194,7 +231,7 @@ export default function Header() {
                         <div className="fw-bold text-dark">{user.name}</div>
                         <div className="small text-muted">{user.email}</div>
                     </li>
-                    {user.role === 'admin' && <li><Link className="dropdown-item rounded mb-1 text-primary fw-bold" to="/admin" onClick={()=>setOpenUser(false)}>Quản trị hệ thống</Link></li>}
+                    {(user.role === 'admin' || user.role === 'staff') && <li><Link className="dropdown-item rounded mb-1 text-primary fw-bold" to="/admin" onClick={()=>setOpenUser(false)}>Quản trị hệ thống</Link></li>}
                     <li><Link className="dropdown-item rounded mb-1" to="/profile" onClick={()=>setOpenUser(false)}>Tài khoản của tôi</Link></li>
                     <li><Link className="dropdown-item rounded mb-1" to="/profile?tab=orders" onClick={()=>setOpenUser(false)}>Đơn mua</Link></li>
                     <li><hr className="dropdown-divider"/></li>
@@ -217,6 +254,12 @@ export default function Header() {
         onCancel={() => setDeleteId(null)}
         confirmText="Xóa"
     />
+    
+    <style>{`
+        .text-truncate-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .hover-bg-light:hover { background-color: #f8f9fa; }
+        .hover-icon:hover { background-color: #f1f5f9; color: var(--primary) !important; }
+    `}</style>
     </>
   );
 }

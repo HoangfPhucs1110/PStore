@@ -7,13 +7,14 @@ const getAllProducts = async (req, res) => {
     const { 
       keyword, categorySlug, brand, sort, 
       page = 1, limit = 12, 
-      isFeatured, isNew 
+      isFeatured, isNew,
+      minPrice, maxPrice,
+      ...others // Các tham số còn lại (dành cho lọc specs)
     } = req.query;
-    
-    // 1. Xây dựng bộ lọc (Query Builder)
-    let query = {}; 
 
-    // Tìm kiếm (Regex: tìm gần đúng, không phân biệt hoa thường)
+    let query = {};
+
+    // 1. Tìm kiếm
     if (keyword) {
       const regex = new RegExp(keyword, "i");
       query.$or = [
@@ -23,38 +24,45 @@ const getAllProducts = async (req, res) => {
       ];
     }
 
-    // Lọc theo danh mục
-    if (categorySlug && categorySlug !== "all") {
-      query.categorySlug = categorySlug;
-    }
-    
-    // Lọc theo thương hiệu
-    if (brand && brand !== "all") {
-      query.brand = brand;
+    // 2. Bộ lọc cơ bản
+    if (categorySlug && categorySlug !== "all") query.categorySlug = categorySlug;
+    if (brand && brand !== "all") query.brand = brand;
+    if (isFeatured === "true") query.isFeatured = true;
+    if (isNew === "true") query.isNew = true;
+
+    // 3. Lọc theo giá
+    if (minPrice || maxPrice) {
+        query.price = {};
+        if (minPrice) query.price.$gte = Number(minPrice);
+        if (maxPrice) query.price.$lte = Number(maxPrice);
     }
 
-    // Lọc sản phẩm nổi bật
-    if (isFeatured === "true") {
-      query.isFeatured = true;
-    }
+    // 4. --- LỌC THEO THÔNG SỐ KỸ THUẬT ---
+    // Quy tắc: Client gửi param dạng: spec_RAM=16GB, spec_CPU=i7
+    Object.keys(others).forEach(key => {
+        if (key.startsWith("spec_")) {
+            const specKey = key.replace("spec_", ""); // Lấy tên thông số (VD: RAM)
+            const specValue = others[key];
+            
+            // Tìm trong object 'specs' của MongoDB
+            // Dùng Regex để tìm tương đối
+            if (specValue) {
+                query[`specs.${specKey}`] = { $regex: specValue, $options: "i" };
+            }
+        }
+    });
 
-    // Lọc sản phẩm mới
-    if (isNew === "true") {
-      query.isNew = true;
-    }
-
-    // 2. Xử lý sắp xếp
-    let sortOption = { createdAt: -1 }; // Mặc định: Mới nhất trước
+    // 5. Sắp xếp
+    let sortOption = { createdAt: -1 };
     if (sort === "priceAsc") sortOption = { price: 1 };
     if (sort === "priceDesc") sortOption = { price: -1 };
     if (sort === "sold") sortOption = { soldCount: -1 };
 
-    // 3. Phân trang
+    // 6. Phân trang
     const pageNumber = Number(page) || 1;
     const limitNumber = Number(limit) || 12;
     const skip = (pageNumber - 1) * limitNumber;
 
-    // 4. Thực thi truy vấn
     const products = await Product.find(query)
       .sort(sortOption)
       .skip(skip)
@@ -62,50 +70,37 @@ const getAllProducts = async (req, res) => {
 
     const total = await Product.countDocuments(query);
 
-    // 5. Trả về kết quả
     res.json({
       products,
       total,
       page: pageNumber,
       pages: Math.ceil(total / limitNumber),
     });
-
   } catch (error) {
-    console.error("Error in getAllProducts:", error);
     res.status(500).json({ message: "Lỗi Server", error: error.message });
   }
 };
 
-// @desc    Lấy chi tiết 1 sản phẩm theo Slug (SEO Friendly)
-// @route   GET /api/products/slug/:slug
 const getProductBySlug = async (req, res) => {
   try {
     const product = await Product.findOne({ slug: req.params.slug });
-    if (!product) {
-      return res.status(404).json({ message: "Không tìm thấy sản phẩm" });
-    }
+    if (!product) return res.status(404).json({ message: "Không tìm thấy sản phẩm" });
     res.json(product);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-// @desc    Lấy chi tiết theo ID (Dùng cho Admin sửa)
-// @route   GET /api/products/:id
 const getProductById = async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
-    if (!product) {
-      return res.status(404).json({ message: "Không tìm thấy sản phẩm" });
-    }
+    if (!product) return res.status(404).json({ message: "Không tìm thấy sản phẩm" });
     res.json(product);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-// @desc    Tạo sản phẩm mới (Admin)
-// @route   POST /api/products
 const createProduct = async (req, res) => {
   try {
     const product = await Product.create(req.body);
@@ -115,46 +110,30 @@ const createProduct = async (req, res) => {
   }
 };
 
-// @desc    Cập nhật sản phẩm (Admin)
-// @route   PUT /api/products/:id
 const updateProduct = async (req, res) => {
   try {
-    const product = await Product.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
-      runValidators: true
-    });
-    if (!product) {
-      return res.status(404).json({ message: "Không tìm thấy sản phẩm" });
-    }
+    const product = await Product.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+    if (!product) return res.status(404).json({ message: "Không tìm thấy sản phẩm" });
     res.json(product);
   } catch (error) {
     res.status(400).json({ message: "Lỗi cập nhật", error: error.message });
   }
 };
 
-// @desc    Xóa sản phẩm (Admin)
-// @route   DELETE /api/products/:id
 const deleteProduct = async (req, res) => {
   try {
     const product = await Product.findByIdAndDelete(req.params.id);
-    if (!product) {
-      return res.status(404).json({ message: "Không tìm thấy sản phẩm" });
-    }
+    if (!product) return res.status(404).json({ message: "Không tìm thấy sản phẩm" });
     res.json({ message: "Đã xóa sản phẩm thành công" });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-// @desc    Upload ảnh sản phẩm lên Cloudinary
-// @route   POST /api/products/upload-image
 const uploadImage = (req, res) => {
   if (!req.file) {
     return res.status(400).json({ message: "Vui lòng chọn file ảnh" });
   }
-  
-  // Cloudinary tự động trả về đường dẫn ảnh tuyệt đối trong req.file.path
-  // Không cần ghép localhost nữa
   res.json({ url: req.file.path });
 };
 

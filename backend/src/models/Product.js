@@ -4,28 +4,15 @@ const productSchema = new mongoose.Schema(
   {
     name: { type: String, required: true },
     slug: { type: String, unique: true, required: true },
-    categorySlug: {
-      type: String,
-      enum: [
-        "laptop",
-        "man-hinh",
-        "ban-phim",
-        "loa",
-        "chuot",
-        "tai-nghe",
-        "ghe-gaming",
-        "tay-cam"
-      ],
-      required: true
-    },
+    categorySlug: { type: String, required: true },
     brand: String,
     images: [String],
     thumbnail: String,
-    price: { type: Number, required: true },
+    price: { type: Number, required: true }, // Giá bán
+    importPrice: { type: Number, required: true, default: 0 }, // <--- GIÁ GỐC (MỚI)
     oldPrice: Number,
     stock: { type: Number, default: 0 },
     sku: String,
-    // THÊM 2 TRƯỜNG MÔ TẢ
     shortDescription: String,
     description: String,
     status: {
@@ -33,7 +20,6 @@ const productSchema = new mongoose.Schema(
       enum: ["active", "hidden", "out-of-stock"],
       default: "active"
     },
-    // THÔNG SỐ KỸ THUẬT
     specs: { type: mongoose.Schema.Types.Mixed },
     tags: [String],
     isFeatured: { type: Boolean, default: false },
@@ -42,8 +28,10 @@ const productSchema = new mongoose.Schema(
     ratingAvg: { type: Number, default: 0 },
     ratingCount: { type: Number, default: 0 }
   },
-  { timestamps: true }
+  { 
+    timestamps: true,
+    suppressReservedKeysWarning: true
+  }
 );
 
-module.exports =
-  mongoose.models.Product || mongoose.model("Product", productSchema);
+module.exports = mongoose.models.Product || mongoose.model("Product", productSchema);
