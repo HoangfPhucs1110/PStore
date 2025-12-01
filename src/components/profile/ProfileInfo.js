@@ -1,88 +1,38 @@
-export default function ProfileInfo({
-  profile,
-  user,
-  avatarUrl,
-  saving,
-  avatarUploading,
-  onChange,
-  onSave,
-  onAvatarClick
-}) {
-  const displayName = profile.name || user.name || "Người dùng";
-  const email = user.email;
+import { useState, useEffect } from "react";
+
+export default function ProfileInfo({ profile, user, saving, onSave }) {
+  const [form, setForm] = useState({ name: "", phone: "" });
+
+  useEffect(() => {
+    setForm({ name: profile.name, phone: profile.phone });
+  }, [profile]);
 
   return (
     <>
-      <h5 className="mb-3">Thông tin tài khoản</h5>
-      <div className="row g-3">
-        <div className="col-md-8">
-          <div className="mb-3">
-            <label className="form-label">Họ tên</label>
-            <input
-              className="form-control"
-              value={profile.name}
-              onChange={(e) => onChange("name", e.target.value)}
-            />
-          </div>
-          <div className="mb-3">
-            <label className="form-label">Email</label>
-            <input className="form-control" value={email} disabled />
-          </div>
-          <div className="mb-3">
-            <label className="form-label">Số điện thoại</label>
-            <input
-              className="form-control"
-              value={profile.phone}
-              onChange={(e) => onChange("phone", e.target.value)}
-            />
-          </div>
-          <button
-            className="btn btn-primary"
-            type="button"
-            disabled={saving}
-            onClick={onSave}
-          >
+      <h5 className="fw-bold border-bottom pb-3 mb-4">Hồ sơ của tôi</h5>
+      <div className="row mb-3 align-items-center">
+        <label className="col-sm-3 col-form-label text-muted">Email</label>
+        <div className="col-sm-9">
+          <input className="form-control-plaintext fw-bold text-dark" value={user?.email} readOnly />
+        </div>
+      </div>
+      <div className="row mb-3 align-items-center">
+        <label className="col-sm-3 col-form-label text-muted">Họ tên</label>
+        <div className="col-sm-9">
+          <input className="form-control" value={form.name} onChange={e => setForm({...form, name: e.target.value})} />
+        </div>
+      </div>
+      <div className="row mb-4 align-items-center">
+        <label className="col-sm-3 col-form-label text-muted">Số điện thoại</label>
+        <div className="col-sm-9">
+          <input className="form-control" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} />
+        </div>
+      </div>
+      <div className="row">
+        <div className="col-sm-9 offset-sm-3">
+          <button className="btn btn-primary px-4 fw-medium" disabled={saving} onClick={() => onSave(form)}>
             {saving ? "Đang lưu..." : "Lưu thay đổi"}
           </button>
-        </div>
-
-        <div className="col-md-4 d-flex flex-column align-items-center">
-          <div
-            className="rounded-circle mb-2 border position-relative"
-            style={{
-              width: 96,
-              height: 96,
-              background: "#e5f0ff",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              overflow: "hidden",
-              fontSize: 36,
-              fontWeight: 700,
-              color: "#0d6efd",
-              cursor: "pointer"
-            }}
-            onClick={onAvatarClick}
-          >
-            {avatarUrl ? (
-              <img
-                src={avatarUrl}
-                alt=""
-                style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                onError={(e) => {
-                  e.currentTarget.src =
-                    "https://via.placeholder.com/96?text=Avatar";
-                }}
-              />
-            ) : (
-              displayName.charAt(0).toUpperCase()
-            )}
-          </div>
-          <div className="fw-semibold">{displayName}</div>
-          <div className="small text-muted mb-1">{email}</div>
-          <div className="small text-primary">
-            {avatarUploading ? "Đang tải ảnh..." : "Nhấn vào ảnh để đổi ảnh"}
-          </div>
         </div>
       </div>
     </>

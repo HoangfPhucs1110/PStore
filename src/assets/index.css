@@ -1,0 +1,190 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+:root {
+  --primary: #2563eb;       /* Royal Blue */
+  --primary-dark: #1d4ed8;
+  --secondary: #0f172a;     /* Dark Slate */
+  --accent: #f59e0b;        /* Amber */
+  --bg-body: #f8fafc;       /* Cool gray */
+  --text-main: #334155;
+  --text-light: #64748b;
+  --white: #ffffff;
+  --border-color: #e2e8f0;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03);
+  --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.05), 0 4px 6px -2px rgba(0,0,0,0.025);
+  --radius: 12px;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background-color: var(--bg-body);
+  color: var(--text-main);
+  -webkit-font-smoothing: antialiased;
+}
+
+a { text-decoration: none; color: inherit; transition: 0.2s; }
+a:hover { color: var(--primary); }
+
+/* --- UTILS --- */
+.text-primary { color: var(--primary) !important; }
+.bg-primary { background-color: var(--primary) !important; }
+.text-secondary { color: var(--text-light) !important; }
+.fw-bold { font-weight: 600 !important; }
+.fs-7 { font-size: 0.875rem; }
+
+/* --- BUTTONS --- */
+.btn {
+  border-radius: 8px;
+  font-weight: 500;
+  padding: 8px 20px;
+  transition: all 0.2s ease;
+}
+.btn-primary {
+  background-color: var(--primary);
+  border-color: var(--primary);
+  box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);
+}
+.btn-primary:hover {
+  background-color: var(--primary-dark);
+  border-color: var(--primary-dark);
+  transform: translateY(-1px);
+}
+.btn-outline-primary {
+  color: var(--primary);
+  border-color: var(--primary);
+}
+.btn-outline-primary:hover {
+  background-color: var(--primary);
+  color: white;
+}
+
+/* --- CARDS --- */
+.card {
+  border: 1px solid transparent; 
+  border-radius: var(--radius);
+  background: var(--white);
+  box-shadow: var(--shadow-sm);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+  border-color: rgba(37, 99, 235, 0.1);
+}
+
+/* --- PRODUCT CARD --- */
+.product-card-img-wrapper {
+  position: relative;
+  padding-top: 100%; 
+  background: #fff;
+  overflow: hidden;
+}
+.product-card-img {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  object-fit: contain;
+  padding: 20px;
+  transition: transform 0.5s ease;
+}
+.card:hover .product-card-img {
+  transform: scale(1.08);
+}
+.badge-sale {
+  position: absolute;
+  top: 10px; left: 10px;
+  background: #ef4444;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);
+}
+
+/* --- INPUTS --- */
+.form-control {
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  padding: 10px 14px;
+}
+.form-control:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+/* --- HEADER --- */
+.header-shadow {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 1px 0 rgba(0,0,0,0.05);
+}
+.search-input-wrapper {
+  background: #f1f5f9;
+  border-radius: 99px;
+  border: 1px solid transparent;
+  transition: 0.2s;
+}
+.search-input-wrapper:focus-within {
+  background: #fff;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+/* --- BANNER --- */
+.hero-gradient {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  color: white;
+}
+
+/* --- CUSTOM SWIPER NAVIGATION --- */
+.custom-nav-btn {
+  background-color: #ffffff !important;
+  color: #334155 !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50% !important;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  z-index: 50 !important;
+  opacity: 1 !important;
+}
+
+.custom-nav-btn:hover {
+  background-color: #f8fafc !important;
+  color: #2563eb !important;
+  border-color: #2563eb !important;
+  transform: scale(1.1);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1) !important;
+}
+
+.custom-nav-btn.swiper-button-disabled {
+  opacity: 0.5 !important;
+  cursor: not-allowed;
+}
+
+.swiper-btn-prev {
+  position: absolute;
+  top: 50%;
+  left: -22px;
+  transform: translateY(-50%);
+}
+
+.swiper-btn-next {
+  position: absolute;
+  top: 50%;
+  right: -22px;
+  transform: translateY(-50%);
+}
+
+.home-swiper-section .swiper {
+  padding: 20px 4px !important;
+  margin: -20px -4px !important;
+}

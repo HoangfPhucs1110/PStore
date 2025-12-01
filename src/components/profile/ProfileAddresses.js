@@ -1,151 +1,106 @@
-export default function ProfileAddresses({
-  addresses,
-  editingAddress,
-  saving,
-  onFieldChange,
-  onSave,
-  onEdit,
-  onDelete,
-  onSetDefault
-}) {
+import { useState } from "react";
+import { FiTrash2, FiEdit2, FiPlus } from "react-icons/fi";
+import { useNotification } from "../../context/NotificationContext"; // Import hook thông báo
+
+export default function ProfileAddresses({ addresses, onUpdate, saving }) {
+  const { confirm, notify } = useNotification(); // Sử dụng hook
+  const [editing, setEditing] = useState(null); // index đang sửa, -1 là thêm mới
+  const [form, setForm] = useState({ fullName: "", phone: "", address: "", isDefault: false });
+
+  const startEdit = (addr, index) => {
+    setEditing(index);
+    setForm(addr ? { ...addr } : { fullName: "", phone: "", address: "", isDefault: false });
+  };
+
+  const handleSave = () => {
+    if (!form.address.trim()) {
+      notify("Vui lòng nhập địa chỉ chi tiết", "warning");
+      return;
+    }
+    
+    let newList = [...addresses];
+    
+    // Nếu đặt làm mặc định, bỏ mặc định của các cái khác
+    if (form.isDefault) {
+      newList = newList.map(a => ({ ...a, isDefault: false }));
+    }
+
+    if (editing === -1) {
+      newList.push(form); // Thêm mới
+    } else {
+      newList[editing] = form; // Cập nhật
+    }
+    
+    onUpdate(newList);
+    setEditing(null);
+  };
+
+  const handleDelete = (index) => {
+    // Dùng Custom Confirm thay cho window.confirm
+    confirm("Bạn có chắc chắn muốn xóa địa chỉ này?", () => {
+      const newList = addresses.filter((_, i) => i !== index);
+      onUpdate(newList);
+      notify("Đã xóa địa chỉ", "success");
+    });
+  };
+
   return (
     <>
-      <h5 className="mb-3">Địa chỉ giao hàng</h5>
-      <p className="small text-muted">
-        Thêm sẵn địa chỉ để chọn nhanh ở bước thanh toán.
-      </p>
+      <div className="d-flex justify-content-between align-items-center mb-4 border-bottom pb-3">
+        <h5 className="fw-bold m-0">Địa chỉ của tôi</h5>
+        <button className="btn btn-primary btn-sm d-flex align-items-center gap-2" onClick={() => startEdit(null, -1)} disabled={editing !== null}>
+          <FiPlus /> Thêm địa chỉ mới
+        </button>
+      </div>
 
-      <div className="row g-3">
-        <div className="col-md-7">
-          <div className="bg-light rounded-3 p-3">
-            <h6 className="mb-2">
-              {editingAddress.index >= 0 ? "Sửa địa chỉ" : "Thêm địa chỉ mới"}
-            </h6>
-
-            <div className="row g-2">
-              <div className="col-md-4">
-                <label className="form-label small mb-1">Tên gợi nhớ</label>
-                <input
-                  className="form-control form-control-sm"
-                  value={editingAddress.label}
-                  onChange={(e) => onFieldChange("label", e.target.value)}
-                />
-              </div>
-              <div className="col-md-4">
-                <label className="form-label small mb-1">
-                  Tên người nhận
-                </label>
-                <input
-                  className="form-control form-control-sm"
-                  value={editingAddress.fullName}
-                  onChange={(e) => onFieldChange("fullName", e.target.value)}
-                />
-              </div>
-              <div className="col-md-4">
-                <label className="form-label small mb-1">
-                  Số điện thoại nhận hàng
-                </label>
-                <input
-                  className="form-control form-control-sm"
-                  value={editingAddress.phone}
-                  onChange={(e) => onFieldChange("phone", e.target.value)}
-                />
-              </div>
-              <div className="col-12">
-                <label className="form-label small mb-1">
-                  Địa chỉ chi tiết
-                </label>
-                <input
-                  className="form-control form-control-sm"
-                  placeholder="Số nhà, đường, phường/xã, quận/huyện, tỉnh/thành phố"
-                  value={editingAddress.address}
-                  onChange={(e) => onFieldChange("address", e.target.value)}
-                />
-              </div>
-              <div className="col-12 d-flex align-items-center mt-1">
-                <input
-                  type="checkbox"
-                  className="form-check-input me-2"
-                  id="addr-default"
-                  checked={editingAddress.isDefault}
-                  onChange={(e) => onFieldChange("isDefault", e.target.checked)}
-                />
-                <label
-                  htmlFor="addr-default"
-                  className="form-check-label small"
-                >
-                  Đặt làm địa chỉ mặc định
-                </label>
+      {editing !== null && (
+        <div className="card p-3 mb-4 bg-light border-0 shadow-sm animate-fade-in">
+          <h6 className="fw-bold mb-3">{editing === -1 ? "Thêm địa chỉ mới" : "Cập nhật địa chỉ"}</h6>
+          <div className="row g-2">
+            <div className="col-md-6">
+              <label className="form-label small text-muted">Họ tên</label>
+              <input className="form-control" value={form.fullName} onChange={e=>setForm({...form, fullName: e.target.value})} />
+            </div>
+            <div className="col-md-6">
+              <label className="form-label small text-muted">Số điện thoại</label>
+              <input className="form-control" value={form.phone} onChange={e=>setForm({...form, phone: e.target.value})} />
+            </div>
+            <div className="col-12">
+              <label className="form-label small text-muted">Địa chỉ chi tiết</label>
+              <input className="form-control" placeholder="Số nhà, đường, phường/xã..." value={form.address} onChange={e=>setForm({...form, address: e.target.value})} />
+            </div>
+            <div className="col-12">
+              <div className="form-check">
+                <input className="form-check-input" type="checkbox" id="defaultAddr" checked={form.isDefault} onChange={e=>setForm({...form, isDefault: e.target.checked})} />
+                <label className="form-check-label" htmlFor="defaultAddr">Đặt làm địa chỉ mặc định</label>
               </div>
             </div>
-
-            <button
-              type="button"
-              className="btn btn-outline-primary btn-sm mt-3"
-              onClick={onSave}
-            >
-              {editingAddress.index >= 0 ? "Cập nhật địa chỉ" : "Thêm địa chỉ"}
-            </button>
+            <div className="col-12 mt-3 d-flex gap-2">
+              <button className="btn btn-primary btn-sm px-4" onClick={handleSave} disabled={saving}>Lưu</button>
+              <button className="btn btn-light btn-sm px-4" onClick={() => setEditing(null)}>Hủy</button>
+            </div>
           </div>
         </div>
+      )}
 
-        <div className="col-md-5">
-          <div className="vstack gap-2">
-            {addresses.map((addr, idx) => (
-              <div
-                key={idx}
-                className="address-item d-flex justify-content-between align-items-start"
-              >
-                <div>
-                  <div className="fw-semibold small">
-                    {addr.label ? `[${addr.label}] ` : ""}
-                    {addr.fullName} – {addr.phone}
-                    {addr.isDefault && (
-                      <span className="badge bg-primary ms-2">Mặc định</span>
-                    )}
-                  </div>
-                  <div className="small text-muted">{addr.address}</div>
-                </div>
-                <div className="d-flex flex-column gap-1 address-actions">
-                  {!addr.isDefault && (
-                    <button
-                      type="button"
-                      className="btn btn-outline-primary btn-sm px-3 py-1"
-                      onClick={() => onSetDefault(idx)}
-                    >
-                      Đặt mặc định
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    className="btn btn-outline-secondary btn-sm"
-                    onClick={() => onEdit(idx)}
-                  >
-                    Sửa
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-outline-danger btn-sm"
-                    onClick={() => onDelete(idx)}
-                  >
-                    Xóa
-                  </button>
-                </div>
+      <div className="vstack gap-3">
+        {addresses.length === 0 && <p className="text-muted text-center py-3">Chưa có địa chỉ nào.</p>}
+        {addresses.map((addr, i) => (
+          <div key={i} className="border rounded p-3 d-flex justify-content-between align-items-center bg-white">
+            <div>
+              <div className="d-flex align-items-center gap-2 mb-1">
+                <span className="fw-bold text-dark">{addr.fullName}</span>
+                <span className="text-muted small border-start ps-2">{addr.phone}</span>
+                {addr.isDefault && <span className="badge bg-success-subtle text-success border border-success-subtle">Mặc định</span>}
               </div>
-            ))}
+              <div className="small text-secondary">{addr.address}</div>
+            </div>
+            <div className="d-flex gap-2">
+              <button className="btn btn-light btn-sm text-primary" onClick={() => startEdit(addr, i)} title="Sửa"><FiEdit2 /></button>
+              <button className="btn btn-light btn-sm text-danger" onClick={() => handleDelete(i)} title="Xóa"><FiTrash2 /></button>
+            </div>
           </div>
-
-          <div className="mt-4">
-            <button
-              className="btn btn-primary"
-              type="button"
-              disabled={saving}
-              onClick={onSave}
-            >
-              {saving ? "Đang lưu..." : "Lưu thay đổi địa chỉ"}
-            </button>
-          </div>
-        </div>
+        ))}
       </div>
     </>
   );

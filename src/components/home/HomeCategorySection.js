@@ -1,101 +1,74 @@
-import { useEffect, useMemo, useState } from "react";
-import ProductCard from "../ProductCard";
-import { FiChevronLeft, FiChevronRight } from "react-icons/fi";
+import ProductCard from "../product/ProductCard";
+import { FiArrowRight, FiChevronLeft, FiChevronRight } from "react-icons/fi";
+
+// Import Swiper
+import { Swiper, SwiperSlide } from 'swiper/react';
+import { Navigation, Autoplay } from 'swiper/modules';
+
+// Import styles
+import 'swiper/css';
+import 'swiper/css/navigation';
 
 export default function HomeCategorySection({ title, items = [], onViewAll }) {
-  const list = Array.isArray(items) ? items : [];
-  const [index, setIndex] = useState(0);
+  if (!items.length) return null;
 
-  const maxShow = 6;
-  const hasSlider = list.length > maxShow;
-
-  const visible = useMemo(() => {
-    if (!list.length) return [];
-    const show = Math.min(maxShow, list.length);
-    const arr = [];
-    for (let i = 0; i < show; i++) {
-      arr.push(list[(index + i) % list.length]);
-    }
-    return arr;
-  }, [list, index]);
-
-  const next = () => setIndex((i) => (i + 1) % list.length);
-  const prev = () => setIndex((i) => (i - 1 + list.length) % list.length);
-
-  useEffect(() => {
-    if (!hasSlider) return;
-    const t = setInterval(next, 6000);
-    return () => clearInterval(t);
-  }, [hasSlider]);
+  // Tạo tên class unique
+  const safeTitle = title.replace(/[^a-zA-Z0-9]/g, "");
+  const prevClass = `prev-${safeTitle}`;
+  const nextClass = `next-${safeTitle}`;
 
   return (
-    <div className="mb-4">
-      <div className="d-flex justify-content-between align-items-center mb-2">
-        <h5 className="mb-0">{title}</h5>
-        <button
-          className="btn btn-link small text-primary p-0"
-          onClick={onViewAll}
+    <div className="mb-5 position-relative home-swiper-section group-hover-container">
+      <div className="d-flex justify-content-between align-items-center mb-2 px-1">
+        <h4 className="fw-bold m-0 text-dark">{title}</h4>
+        <button 
+            className="btn btn-link text-decoration-none text-dark fw-medium p-0 d-flex align-items-center gap-1 hover-text-primary"
+            onClick={onViewAll}
         >
-          Xem tất cả
+            Xem tất cả <FiArrowRight />
         </button>
       </div>
 
-      <div className="cat-wrapper position-relative bg-white rounded-3 shadow-sm p-3">
-        {/* CSS chung (giống TrendingSlider) */}
-        <style>{`
-          .cat-wrapper { position: relative; }
-          .slider-btn {
-            position: absolute;
-            top: 50%;
-            transform: translateY(-50%);
-            width: 44px;
-            height: 44px;
-            border-radius: 50%;
-            border: none;
-            background: #fff;
-            color: #333;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            transition: 0.2s;
-            z-index: 20;
-          }
-          .slider-btn:hover {
-            background: #007bff;
-            color: #fff;
-          }
-          .slider-left { left: -18px; }
-          .slider-right { right: -18px; }
-        `}</style>
+      <div className="position-relative">
+        
+        {/* NÚT TRÁI (Dùng class CSS mới) */}
+        <button className={`${prevClass} custom-nav-btn swiper-btn-prev`}>
+            <FiChevronLeft size={24} />
+        </button>
 
-        {hasSlider && (
-          <button className="slider-btn slider-left" onClick={prev}>
-            <FiChevronLeft size={22} />
-          </button>
-        )}
-
-        <div
-          className="row g-3 flex-nowrap"
-          style={{ overflow: hasSlider ? "hidden" : "visible" }}
+        {/* SWIPER */}
+        <Swiper
+          modules={[Navigation, Autoplay]}
+          spaceBetween={16}
+          slidesPerView={2}
+          loop={true}
+          autoplay={{
+            delay: 5000,
+            disableOnInteraction: false,
+            pauseOnMouseEnter: true
+          }}
+          navigation={{
+              prevEl: `.${prevClass}`,
+              nextEl: `.${nextClass}`,
+          }}
+          breakpoints={{
+              640: { slidesPerView: 2 },
+              768: { slidesPerView: 3 },
+              1024: { slidesPerView: 4 },
+              1280: { slidesPerView: 5 },
+          }}
         >
-          {visible.map((p) => (
-            <div
-              key={p._id}
-              className="col-6 col-md-4 col-xl-2"
-              style={hasSlider ? { minWidth: "16.66%" } : {}}
-            >
-              <ProductCard p={p} />
-            </div>
+          {items.map((p) => (
+              <SwiperSlide key={p._id}>
+                  <ProductCard product={p} />
+              </SwiperSlide>
           ))}
-        </div>
+        </Swiper>
 
-        {hasSlider && (
-          <button className="slider-btn slider-right" onClick={next}>
-            <FiChevronRight size={22} />
-          </button>
-        )}
+        {/* NÚT PHẢI (Dùng class CSS mới) */}
+        <button className={`${nextClass} custom-nav-btn swiper-btn-next`}>
+            <FiChevronRight size={24} />
+        </button>
       </div>
     </div>
   );

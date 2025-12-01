@@ -1,87 +1,45 @@
-import { FiUser, FiMapPin, FiPackage } from "react-icons/fi";
+import { FiUser, FiMapPin, FiPackage, FiLogOut } from "react-icons/fi";
+import { getImageUrl } from "../../utils/constants";
 
-export default function ProfileSidebar({
-  name,
-  email,
-  avatarUrl,
-  tab,
-  setTab,
-  onAvatarClick
-}) {
-  const firstChar = (name || email || "U").charAt(0).toUpperCase();
+export default function ProfileSidebar({ user, activeTab, setTab, onAvatarClick }) {
+  const menu = [
+    { id: "info", label: "Thông tin tài khoản", icon: <FiUser /> },
+    { id: "addresses", label: "Sổ địa chỉ", icon: <FiMapPin /> },
+    { id: "orders", label: "Quản lý đơn hàng", icon: <FiPackage /> },
+  ];
 
   return (
-    <div className="d-flex flex-column gap-3">
-      <div className="card shadow-sm border-0">
-        <div className="card-body d-flex align-items-center">
-          <div
-            className="me-3"
-            style={{ cursor: "pointer" }}
-            onClick={onAvatarClick}
-          >
-            {avatarUrl ? (
-              <img
-                src={avatarUrl}
-                alt={name}
-                className="profile-avatar"
-                onError={(e) => {
-                  e.currentTarget.src =
-                    "https://via.placeholder.com/56?text=U";
-                }}
-              />
-            ) : (
-              <div
-                className="rounded-circle bg-light d-flex align-items-center justify-content-center"
-                style={{ width: 56, height: 56, fontSize: 20 }}
-              >
-                {firstChar}
-              </div>
-            )}
-          </div>
-          <div>
-            <div className="fw-semibold">{name}</div>
-            <div className="small text-muted">{email}</div>
-            <div className="small text-primary">Nhấn vào ảnh để đổi ảnh</div>
+    <div className="bg-white rounded-3 shadow-sm overflow-hidden">
+      <div className="p-4 border-bottom text-center bg-light">
+        <div className="position-relative d-inline-block cursor-pointer group" onClick={onAvatarClick}>
+          <img 
+            src={getImageUrl(user?.avatarUrl)} 
+            alt={user?.name}
+            className="rounded-circle border border-3 border-white shadow-sm"
+            style={{width: 80, height: 80, objectFit: "cover"}}
+            onError={(e) => e.target.src = "https://via.placeholder.com/80?text=U"}
+          />
+          <div className="position-absolute bottom-0 end-0 bg-dark text-white rounded-circle p-1 border border-white" style={{fontSize: 10, width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+            ✎
           </div>
         </div>
+        <h6 className="mt-2 fw-bold mb-0 text-dark">{user?.name}</h6>
+        <small className="text-muted">{user?.email}</small>
       </div>
-
-      <div className="card shadow-sm border-0">
-        <div className="list-group list-group-flush">
+      <div className="list-group list-group-flush p-2">
+        {menu.map(item => (
           <button
-            type="button"
-            className={
-              "list-group-item list-group-item-action " +
-              (tab === "info" ? "active" : "")
-            }
-            onClick={() => setTab("info")}
+            key={item.id}
+            className={`list-group-item list-group-item-action border-0 rounded-2 mb-1 d-flex align-items-center gap-3 py-3 px-3 transition-all ${
+              activeTab === item.id 
+                ? "bg-primary text-white fw-medium shadow-sm" 
+                : "text-secondary hover-bg-light"
+            }`}
+            onClick={() => setTab(item.id)}
           >
-            <FiUser className="me-2" />
-            Thông tin tài khoản
+            <span className="fs-5">{item.icon}</span> {item.label}
           </button>
-          <button
-            type="button"
-            className={
-              "list-group-item list-group-item-action " +
-              (tab === "addresses" ? "active" : "")
-            }
-            onClick={() => setTab("addresses")}
-          >
-            <FiMapPin className="me-2" />
-            Địa chỉ giao hàng
-          </button>
-          <button
-            type="button"
-            className={
-              "list-group-item list-group-item-action " +
-              (tab === "orders" ? "active" : "")
-            }
-            onClick={() => setTab("orders")}
-          >
-            <FiPackage className="me-2" />
-            Quản lý đơn hàng
-          </button>
-        </div>
+        ))}
       </div>
     </div>
   );
