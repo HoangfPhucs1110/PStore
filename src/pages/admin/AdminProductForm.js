@@ -4,7 +4,7 @@ import { productService } from "../../services/productService";
 import { categoryService } from "../../services/categoryService";
 import AdminSidebar from "../../components/admin/AdminSidebar";
 import { getImageUrl } from "../../utils/constants";
-import { FiTrash2, FiPlus, FiX, FiStar, FiCheck } from "react-icons/fi";
+import { FiTrash2, FiPlus, FiX, FiStar, FiCheck, FiUploadCloud } from "react-icons/fi";
 import { useNotification } from "../../context/NotificationContext";
 
 export default function AdminProductForm() {
@@ -14,20 +14,16 @@ export default function AdminProductForm() {
   
   const [form, setForm] = useState({ 
     name: "", slug: "", 
-    price: 0,       // Giá bán
-    importPrice: 0, // <--- MỚI: Giá gốc
-    oldPrice: 0,    // Giá niêm yết (để hiện gạch ngang)
-    stock: 0, 
-    categorySlug: "", 
-    brand: "", description: "", 
-    images: [],
-    thumbnail: "" 
+    price: 0, importPrice: 0, oldPrice: 0, stock: 0, 
+    categorySlug: "", brand: "", description: "", 
+    images: [], thumbnail: "" 
   });
 
   const [categories, setCategories] = useState([]);
   const [discountPercent, setDiscountPercent] = useState(0);
   const [specsList, setSpecsList] = useState([{ key: "", value: "" }]);
   const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false); // State để hiện loading khi upload
 
   useEffect(() => {
     categoryService.getAll().then(setCategories).catch(err => console.error("Lỗi load danh mục:", err));
@@ -40,7 +36,7 @@ export default function AdminProductForm() {
             name: data.name || "",
             slug: data.slug || "",
             price: data.price || 0,
-            importPrice: data.importPrice || 0, // <--- Load giá gốc
+            importPrice: data.importPrice || 0,
             oldPrice: data.oldPrice || 0,
             stock: data.stock || 0,
             categorySlug: data.categorySlug || "",
@@ -64,34 +60,26 @@ export default function AdminProductForm() {
     }
   }, [id]);
 
-  // Tự động tính giá bán khi thay đổi giá gốc (Tuỳ chọn logic, ở đây tôi để nhập tay độc lập)
-  // Nhưng tự động tính giá bán khi đổi % giảm giá
+  // --- CÁC HÀM XỬ LÝ GIÁ (GIỮ NGUYÊN) ---
   const handleDiscountChange = (e) => {
     let val = Number(e.target.value);
-    if (val < 0) val = 0;
-    if (val > 100) val = 100;
-    
+    if (val < 0) val = 0; if (val > 100) val = 100;
     setDiscountPercent(val);
     if (form.oldPrice > 0) {
         const newPrice = Math.round(form.oldPrice * (1 - val / 100));
         setForm(prev => ({ ...prev, price: newPrice }));
     }
   };
-
   const handleOldPriceChange = (e) => {
     const val = Number(e.target.value);
     setForm(prev => {
-        const newPrice = discountPercent > 0 
-            ? Math.round(val * (1 - discountPercent / 100)) 
-            : val;
+        const newPrice = discountPercent > 0 ? Math.round(val * (1 - discountPercent / 100)) : val;
         return { ...prev, oldPrice: val, price: newPrice };
     });
   };
-
   const handlePriceChange = (e) => {
     const val = Number(e.target.value);
     setForm(prev => ({ ...prev, price: val }));
-    // Tính ngược lại % giảm
     if (form.oldPrice > 0 && val <= form.oldPrice) {
         const percent = Math.round(((form.oldPrice - val) / form.oldPrice) * 100);
         setDiscountPercent(percent);
@@ -100,30 +88,42 @@ export default function AdminProductForm() {
     }
   };
 
-  // Upload ảnh
+  // --- XỬ LÝ UPLOAD NHIỀU ẢNH (MỚI) ---
   const handleImage = async (e) => {
-    const file = e.target.files[0];
-    if(file) {
-        try {
+    const files = Array.from(e.target.files); // Chuyển FileList sang Array
+    if (files.length === 0) return;
+
+    setUploading(true);
+    try {
+        // Tạo các Promise upload song song
+        const uploadPromises = files.map(async (file) => {
             const fd = new FormData();
             fd.append("image", file);
             const res = await productService.uploadImage(fd);
-            const url = typeof res === 'object' ? res.url : res;
-            
-            if (url) {
-                setForm(prev => {
-                    const newImages = [url, ...prev.images];
-                    const newThumb = prev.thumbnail ? prev.thumbnail : url;
-                    return { ...prev, images: newImages, thumbnail: newThumb };
-                });
-                notify("Upload ảnh thành công", "success");
-            } else {
-                notify("Không nhận được link ảnh từ server", "error");
-            }
-        } catch (err) { 
-            console.error(err);
-            notify("Lỗi upload ảnh", "error"); 
+            return typeof res === 'object' ? res.url : res;
+        });
+
+        // Chờ tất cả ảnh upload xong
+        const uploadedUrls = await Promise.all(uploadPromises);
+        
+        // Lọc bỏ các url lỗi (nếu có)
+        const validUrls = uploadedUrls.filter(url => url);
+
+        if (validUrls.length > 0) {
+            setForm(prev => {
+                const newImages = [...validUrls, ...prev.images]; // Thêm ảnh mới vào đầu
+                // Nếu chưa có thumbnail, lấy ảnh đầu tiên vừa up làm thumbnail
+                const newThumb = prev.thumbnail ? prev.thumbnail : newImages[0];
+                return { ...prev, images: newImages, thumbnail: newThumb };
+            });
+            notify(`Đã tải lên ${validUrls.length} ảnh thành công`, "success");
         }
+    } catch (err) { 
+        console.error(err);
+        notify("Lỗi upload ảnh", "error"); 
+    } finally {
+        setUploading(false);
+        e.target.value = ""; // Reset input để chọn lại được ảnh cũ nếu muốn
     }
   }
 
@@ -144,6 +144,7 @@ export default function AdminProductForm() {
       notify("Đã chọn ảnh đại diện", "success");
   };
 
+  // --- XỬ LÝ SPECS (GIỮ NGUYÊN) ---
   const handleSpecChange = (index, field, value) => { 
       const l = [...specsList];
       l[index][field] = value; 
@@ -193,14 +194,13 @@ export default function AdminProductForm() {
                 <div className="col-md-6"><label className="form-label">Tên sản phẩm</label><input className="form-control" value={form.name} onChange={e=>setForm({...form, name: e.target.value})} required/></div>
                 <div className="col-md-6"><label className="form-label">Slug</label><input className="form-control" value={form.slug} onChange={e=>setForm({...form, slug: e.target.value})} required/></div>
                 
-                {/* --- KHU VỰC GIÁ (ĐÃ SỬA ĐỂ THÊM GIÁ GỐC) --- */}
                 <div className="col-12">
                     <div className="bg-light p-3 rounded border">
                         <label className="form-label fw-bold mb-2">Quản lý Giá & Lợi nhuận</label>
                         <div className="row g-3">
                             <div className="col-md-3">
                                 <label className="form-label small text-muted">Giá nhập (Giá gốc)</label>
-                                <input type="number" className="form-control border-warning" value={form.importPrice} onChange={e=>setForm({...form, importPrice: Number(e.target.value)})} min="0" placeholder="Để tính lãi"/>
+                                <input type="number" className="form-control border-warning" value={form.importPrice} onChange={e=>setForm({...form, importPrice: Number(e.target.value)})} min="0"/>
                             </div>
                             <div className="col-md-3">
                                 <label className="form-label small text-muted">Giá niêm yết (Giá cũ)</label>
@@ -238,12 +238,21 @@ export default function AdminProductForm() {
                 <div className="col-md-4"><label className="form-label">Thương hiệu</label><input className="form-control" value={form.brand} onChange={e=>setForm({...form, brand: e.target.value})}/></div>
                 <div className="col-12"><label className="form-label">Mô tả</label><textarea className="form-control" rows="3" value={form.description} onChange={e=>setForm({...form, description: e.target.value})}/></div>
 
-                {/* --- KHU VỰC HÌNH ẢNH (GIỮ NGUYÊN TÍNH NĂNG CHỌN THUMBNAIL) --- */}
+                {/* --- KHU VỰC HÌNH ẢNH (ĐÃ CẬP NHẬT MULTIPLE UPLOAD) --- */}
                 <div className="col-12 mt-4"><h6 className="text-primary fw-bold border-bottom pb-2">2. Hình ảnh</h6></div>
                 <div className="col-12">
-                    <input type="file" className="form-control mb-3" onChange={handleImage} accept="image/*"/>
+                    <div className="mb-3">
+                        <label className="btn btn-outline-primary d-inline-flex align-items-center gap-2">
+                            {uploading ? <span className="spinner-border spinner-border-sm"/> : <FiUploadCloud size={20}/>}
+                            <span>{uploading ? "Đang tải lên..." : "Chọn nhiều ảnh"}</span>
+                            {/* Thêm thuộc tính multiple */}
+                            <input type="file" className="d-none" onChange={handleImage} accept="image/*" multiple disabled={uploading}/>
+                        </label>
+                        <span className="ms-3 text-muted small">Giữ phím <strong>Ctrl</strong> (hoặc Command) để chọn nhiều ảnh cùng lúc.</span>
+                    </div>
                     
-                    <div className="d-flex gap-3 flex-wrap">
+                    <div className="d-flex gap-3 flex-wrap bg-light p-3 rounded border border-dashed">
+                        {form.images.length === 0 && <div className="text-muted w-100 text-center py-4">Chưa có ảnh nào.</div>}
                         {form.images?.map((img, i) => {
                             const isThumbnail = img === form.thumbnail;
                             return (
